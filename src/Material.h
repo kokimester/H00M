@@ -1,23 +1,24 @@
 #pragma once
 
-#include <glew/glew.h>
+/* #include <GLES3/gl3.h> */
+#include <glad/glad.h>
 
-class Material
-{
+class Material {
 private:
-	GLfloat specularIntensity;
-	GLfloat shininess;
+  float specularIntensity;
+  float shininess;
+
 public:
-	Material();
-	Material(GLfloat sIntensity, GLfloat shine);
-	~Material() {};
+  Material();
+  Material(float sIntensity, float shine);
+  ~Material() {};
 
-	GLfloat getShininess() const { return shininess; }
-	GLfloat getSpecularIntensity() const { return specularIntensity; }
+  float getShininess() const { return shininess; }
+  float getSpecularIntensity() const { return specularIntensity; }
 
-	void useMaterial(GLuint specularIntensityLocation, GLuint shininessLocation) {
-		glUniform1f(specularIntensityLocation, specularIntensity);
-		glUniform1f(shininessLocation, shininess);
-	}
+  void useMaterial(unsigned int specularIntensityLocation,
+                   unsigned int shininessLocation) {
+    glUniform1f(specularIntensityLocation, specularIntensity);
+    glUniform1f(shininessLocation, shininess);
+  }
 };
-

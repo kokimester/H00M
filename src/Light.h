@@ -1,25 +1,21 @@
 #pragma once
 
-#include <glew/glew.h>
+/* #include <GL/glew.h> */
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
-class Light
-{
+class Light {
 protected:
-	glm::vec3 colour;
-	GLfloat ambientIntensity;
-	GLfloat diffuseIntensity;
+  glm::vec3 colour;
+  float ambientIntensity;
+  float diffuseIntensity;
 
 public:
-	Light();
-	Light(GLfloat red, GLfloat green, GLfloat blue, GLfloat aIntensity,
-		GLfloat dIntensity);
-	~Light();
+  Light();
+  Light(float red, float green, float blue, float aIntensity, float dIntensity);
+  ~Light();
 
-	glm::vec3 getColour() const { return colour; }
-	GLfloat getAmbientIntensity() const { return ambientIntensity; }
-	GLfloat getDiffuseIntensity() const { return diffuseIntensity; }
-
+  glm::vec3 getColour() const { return colour; }
+  float getAmbientIntensity() const { return ambientIntensity; }
+  float getDiffuseIntensity() const { return diffuseIntensity; }
 };
-

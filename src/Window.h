@@ -2,58 +2,59 @@
 #include <iostream>
 #include <stdio.h>
 
-#include <glew/glew.h>
-#include <GLFW\glfw3.h>
 #include "Camera.h"
+/* #include <GLES3/gl3.h> */
+#include <glad/glad.h>
+/* #include <GL/glew.h> */
+#include <GLFW/glfw3.h>
 
-class Window
-{
+class Window {
 private:
-	GLFWwindow* mainWindow;
+  GLFWwindow *mainWindow;
 
-	GLboolean fullScreen;
+  bool fullScreen;
 
-	GLint width, height;
-	GLint bufferWidth, bufferHeight;
+  int width, height;
+  int bufferWidth, bufferHeight;
 
-	bool keys[1024];
+  bool keys[1024];
 
-	GLfloat lastX;
-	GLfloat lastY;
-	GLfloat xChange;
-	GLfloat yChange;
-	bool mouseFirstMoved; //legelso movement, ha belepunk az alkalmazasba ne ugrojon 180at a kamera
+  float lastX;
+  float lastY;
+  float xChange;
+  float yChange;
+  bool mouseFirstMoved; // legelso movement, ha belepunk az alkalmazasba ne
+                        // ugrojon 180at a kamera
 
-	void createCallbacks();
-	static void handleKeys(GLFWwindow* window, int key, int code, int action, int mode);
-	static void handleMouse(GLFWwindow* window, double xPos, double yPos);
+  void createCallbacks();
+  static void handleKeys(GLFWwindow *window, int key, int code, int action,
+                         int mode);
+  static void handleMouse(GLFWwindow *window, double xPos, double yPos);
+
 public:
-	Window();
+  Window();
 
-	Window(GLint windowWidht, GLint windowHeight, GLboolean pFullScreen);
+  Window(int windowWidht, int windowHeight, bool pFullScreen);
 
-	GLFWwindow* getWindow() const { return mainWindow; }
+  GLFWwindow *getWindow() const { return mainWindow; }
 
-	int Initialise();
+  int Initialise();
 
-	GLint getBufferWidth() { return bufferWidth; }
-	GLint getBufferHeight() { return bufferHeight; }
+  int getBufferWidth() { return bufferWidth; }
+  int getBufferHeight() { return bufferHeight; }
 
-	bool getShouldClose() { return glfwWindowShouldClose(mainWindow); }
+  bool getShouldClose() { return glfwWindowShouldClose(mainWindow); }
 
-	//nem tul oop, dobalgatni kene az ablakot ehelyett
-	bool* getKeys() { return keys; }
-	
-	GLfloat getXChange();
-	GLfloat getYChange();
+  // nem tul oop, dobalgatni kene az ablakot ehelyett
+  bool *getKeys() { return keys; }
 
+  float getXChange();
+  float getYChange();
 
-	void swapBuffers() { glfwSwapBuffers(mainWindow); }
+  void swapBuffers() { glfwSwapBuffers(mainWindow); }
 
-	//
-	void processInput(Camera& camera);
-	//
-	~Window();
-
+  //
+  void processInput(Camera &camera);
+  //
+  ~Window();
 };
-

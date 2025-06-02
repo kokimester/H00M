@@ -1,11 +1,6 @@
 #include "Material.h"
 
-Material::Material()
-	:specularIntensity(0.0f), shininess(0.0f)
-{
-}
+Material::Material() : specularIntensity(0.0f), shininess(0.0f) {}
 
-Material::Material(GLfloat sIntensity, GLfloat shine)
-	:specularIntensity(sIntensity), shininess(shine)
-{
-}
+Material::Material(float sIntensity, float shine)
+    : specularIntensity(sIntensity), shininess(shine) {}

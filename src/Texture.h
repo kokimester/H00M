@@ -1,34 +1,32 @@
 #pragma once
 
-#include <glew/glew.h>
 #include "stb_image.h"
 
-#include <string.h>
 #include <exception>
+#include <glad/glad.h>
 #include <stdexcept>
+#include <string.h>
 
 //=====================================
 //			EXCEPTIONS
 //=====================================
-//std::invalid_argument in constructor
+// std::invalid_argument in constructor
 //
 //
-class Texture
-{
+class Texture {
 private:
-	GLuint textureID;
-	int width, height, bitDepth;
-	char* fileLocation;
+  unsigned int textureID;
+  int width, height, bitDepth;
+  char *fileLocation;
 
 public:
-	Texture();
-	Texture(const char* fileLoc);
-	~Texture();
+  Texture();
+  Texture(const char *fileLoc);
+  ~Texture();
 
-	bool loadTexture();
-	bool loadTextureAlpha();
+  bool loadTexture();
+  bool loadTextureAlpha();
 
-	void useTexture();
-	void clearTexture();
+  void useTexture();
+  void clearTexture();
 };
-
