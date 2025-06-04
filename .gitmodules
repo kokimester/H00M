@@ -13,3 +13,6 @@
 [submodule "vendor/assimp"]
 	path = vendor/assimp
 	url = https://github.com/assimp/assimp.git
+[submodule "vendor/freetype-gl"]
+	path = vendor/freetype-gl
+	url = https://github.com/rougier/freetype-gl.git
