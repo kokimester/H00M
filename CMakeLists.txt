@@ -1,7 +1,7 @@
 #
 # Specify minimum CMake version and project name
 #
-cmake_minimum_required (VERSION 3.0)
+cmake_minimum_required (VERSION 3.24)
 project (h00m)
 
 set( CMAKE_VERBOSE_MAKEFILE on )
@@ -21,7 +21,27 @@ else()
   endif()
 endif()
 
+# Get colored output for ninja
+set(CMAKE_COLOR_DIAGNOSTICS ON)
+
+# This needs to be set to compile assimp
 set(ASSIMP_WARNINGS_AS_ERRORS OFF)
+
+# Optionally set things like CMAKE_CXX_STANDARD,
+# CMAKE_POSITION_INDEPENDENT_CODE here
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 23)
+
+# This is needed for nvim clang intellisense
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
+
+# Let's ensure -std=c++xx instead of -std=g++xx
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Let's nicely support folders in IDEs
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
 
 #
 # GLFW options
@@ -37,12 +57,15 @@ add_subdirectory (vendor/assimp)
 #
 # Set include paths
 #
-include_directories (src/
-                     vendor/glad/include/
-                     vendor/glfw/include/
-                     vendor/glm/
-                     vendor/stb/
-                     vendor/assimp/include/)
+include_directories (
+    src/
+    vendor/glad/include/
+    vendor/glfw/include/
+    vendor/glm/
+    vendor/stb/
+    vendor/assimp/include/
+    vendor/freetype-gl/
+                 )
 
 #
 # Include assimp generated config file
