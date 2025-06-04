@@ -68,6 +68,8 @@ int Window::Initialise() {
 
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
 
+  glfwWindowHint(GLFW_FLOATING, GL_TRUE);
+
   GLFWmonitor *monitor = NULL;
   if (fullScreen) {
     monitor = glfwGetPrimaryMonitor();
@@ -80,7 +82,7 @@ int Window::Initialise() {
   // glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
   // glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
 
-  mainWindow = glfwCreateWindow(width, height, "Test Window", monitor, NULL);
+  mainWindow = glfwCreateWindow(width, height, "H00M", monitor, NULL);
   if (!mainWindow) {
     printf("Error creating GLFW window!");
     glfwTerminate();
@@ -98,7 +100,7 @@ int Window::Initialise() {
   glfwSetInputMode(mainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
   gladLoadGL();
-  gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+  /* gladLoadGLLoader((GLADloadproc)glfwGetProcAddress); */
   // modern extension acces
   /* glewExperimental = GL_TRUE; */
 
