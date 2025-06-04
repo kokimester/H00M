@@ -31,7 +31,9 @@ glm::mat4 Camera::calculateViewMatrix() {
 void Camera::keyControl(bool *keys, float deltaTime) {
   float velocity = moveSpeed * deltaTime;
   bool prevF = false;
-
+  if (keys[GLFW_KEY_LEFT_SHIFT]) {
+    velocity *= 2;
+  }
   if (keys[GLFW_KEY_W]) {
     position += front * velocity;
   }
