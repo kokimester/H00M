@@ -38,9 +38,6 @@ GLfloat lastTime = 0.0f;
 
 std::vector<Mesh *> meshList;
 
-// Texture brickTexture;
-// Texture dirtTexture;
-
 bool direction = true;
 float triOffset = 0.0f;
 float triMaxOffset = 0.8f;
@@ -124,201 +121,207 @@ void createTriangle() {
 }
 
 int main() {
-  Window window = Window(1366, 768, GLFW_FALSE);
-  window.Initialise();
-
-  // create triangle
-  createTriangle();
-
-  // create camera
-  Camera camera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f),
-                -90.0f, 0.0f, 2.0f, 0.15f);
-
-  // light source
-  DirectionalLight mainLight =
-      DirectionalLight(1.0f, 1.0f, 1.0f, 0.0f, 0.2f, 0.0f, -1.0f, 0.0f);
-
-  PointLight pointLights[MAX_POINT_LIGHTS];
-
-  Spotlight spotLights[MAX_SPOT_LIGHTS];
-
-  unsigned int pointLightCount = 0;
-  unsigned int spotLightCount = 0;
-
-  pointLights[0] = PointLight(0.0f, 0.0f, 1.0f, 0.0f, 0.3f, 0.0f, 1.0f, 0.0f,
-                              0.3f, 0.2f, 0.1f);
-  /* pointLightCount++; */
-
-  pointLights[1] = PointLight(0.0f, 1.0f, 0.0f, 0.0f, 0.3f, -4.0f, 2.0f, 0.0f,
-                              0.3f, 0.1f, 0.1f);
-
-  /* pointLightCount++; */
-
-  spotLights[0] = Spotlight(1.0f, 1.0f, 1.0f, 0.0f, 2.0f, 0.0f, 0.0f, 0.0f,
-                            0.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 20.0f);
-
-  /* spotLightCount++; */
-
-  spotLights[1] = Spotlight(1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 5.0f, 0.0f, 0.0f,
-                            -100.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 20.0f);
-
-  /* spotLightCount++; */
-
-  // material
-  Material shinyMaterial = Material(4.0f, 256);
-  Material dullMaterial = Material(0.3f, 2);
-
-  Model ah60;
-  Model dancer;
-  try {
-    ah60.loadModel("Models/3ds file.3DS");
-    dancer.loadModel("Models/Bodymesh.obj");
-  } catch (const std::invalid_argument &err) {
-    std::cerr << err.what() << std::endl;
-  }
-
-  // load textures
-  Texture brickTexture("textures/brick.png");
-  brickTexture.loadTextureAlpha();
-  Texture dirtTexture("textures/dirt.png");
-  dirtTexture.loadTextureAlpha();
-  Texture plainTexture("textures/floor.png");
-  plainTexture.loadTextureAlpha();
-
-  // compile shaders
-  Shader shader("../shaders/vertex_source.glsl.vert",
-                "../shaders/fragment_source.glsl.frag");
-
-  glm::mat4 projection(1.f);
-  projection = glm::perspective(
-      45.0f, (GLfloat)(window.getBufferWidth() / window.getBufferHeight()),
-      0.1f, 100.0f);
-
-  while (!window.getShouldClose()) // returns true if window is closed
   {
-    window.processInput(camera); // 1 es 2 re vonalakra csereli a haromszogeket
+    Window window = Window(1366, 768, GLFW_FALSE);
+    window.Initialise();
 
-    GLfloat now = glfwGetTime();
-    deltaTime = now - lastTime;
-    lastTime = now;
+    // create triangle
+    createTriangle();
 
-    glfwPollEvents(); // special events
+    // create camera
+    Camera camera(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f),
+                  -90.0f, 0.0f, 2.0f, 0.15f);
 
-    camera.keyControl(window.getKeys(), deltaTime);
-    camera.mouseControl(window.getXChange(), window.getYChange());
+    // light source
+    DirectionalLight mainLight =
+        DirectionalLight(1.0f, 1.0f, 1.0f, 0.0f, 0.2f, 0.0f, -1.0f, 0.0f);
 
-    if (camera.isFlashlightOn()) {
-      spotLights[0].update(camera.getCameraPosition(), camera.getCameraFront(),
-                           camera.getRight());
-    } else {
-      spotLights[0].disable();
+    PointLight pointLights[MAX_POINT_LIGHTS];
+
+    Spotlight spotLights[MAX_SPOT_LIGHTS];
+
+    unsigned int pointLightCount = 0;
+    unsigned int spotLightCount = 0;
+
+    pointLights[0] = PointLight(0.0f, 0.0f, 1.0f, 0.0f, 0.3f, 0.0f, 1.0f, 0.0f,
+                                0.3f, 0.2f, 0.1f);
+    /* pointLightCount++; */
+
+    pointLights[1] = PointLight(0.0f, 1.0f, 0.0f, 0.0f, 0.3f, -4.0f, 2.0f, 0.0f,
+                                0.3f, 0.1f, 0.1f);
+
+    /* pointLightCount++; */
+
+    spotLights[0] = Spotlight(1.0f, 1.0f, 1.0f, 0.0f, 2.0f, 0.0f, 0.0f, 0.0f,
+                              0.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 20.0f);
+
+    /* spotLightCount++; */
+
+    spotLights[1] = Spotlight(1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 5.0f, 0.0f, 0.0f,
+                              -100.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 20.0f);
+
+    /* spotLightCount++; */
+
+    // material
+    Material shinyMaterial = Material(4.0f, 256);
+    Material dullMaterial = Material(0.3f, 2);
+
+    Model ah60;
+    Model dancer;
+    try {
+      /* ah60.loadModel("Models/3ds file.3DS"); */
+      /* dancer.loadModel("Models/Bodymesh.obj"); */
+    } catch (const std::invalid_argument &err) {
+      std::cerr << err.what() << std::endl;
     }
 
-    // render stuff
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // load textures
+    Texture brickTexture("textures/brick.png");
+    brickTexture.loadTextureAlpha();
+    Texture dirtTexture("textures/dirt.png");
+    dirtTexture.loadTextureAlpha();
+    Texture plainTexture("textures/floor.png");
+    plainTexture.loadTextureAlpha();
 
-    glm::mat4 view = camera.calculateViewMatrix();
-    // berakjuk a kamera helyet igy igazodik a visszaverodes
-    shader.setVec3f(camera.getCameraPosition(), "eyePosition");
+    // compile shaders
+    Shader shader("../shaders/vertex_source.glsl.vert",
+                  "../shaders/fragment_source.glsl.frag");
 
-    shader.setMat4fv(view, "view");
-    shader.setMat4fv(projection, "projection");
+    glm::mat4 projection(1.f);
+    projection = glm::perspective(
+        45.0f, (GLfloat)(window.getBufferWidth() / window.getBufferHeight()),
+        0.1f, 100.0f);
 
-    glm::mat4 model(1.f);
+    while (!window.getShouldClose()) // returns true if window is closed
+    {
+      window.processInput(
+          camera); // 1 es 2 re vonalakra csereli a haromszogeket
 
-    model = glm::translate(model, glm::vec3(0.0f, -1.0f, -3.0f));
-    // model = glm::scale(model, glm::vec3(0.4f, 0.4f, 0.4f));
-    // model = glm::rotate(model, glm::radians(triRotation),
-    // glm::vec3(0.0f, 1.0f, 0.0f));
-    shader.setMat4fv(model, "model");
+      GLfloat now = glfwGetTime();
+      deltaTime = now - lastTime;
+      lastTime = now;
 
-    // hasznaljuk a fenyt
-    //==================================
+      glfwPollEvents(); // special events
 
-    shader.setDirectionalLight(mainLight);
-    shader.setPointLights(pointLights, pointLightCount);
-    shader.setSpotLights(spotLights, spotLightCount);
+      camera.keyControl(window.getKeys(), deltaTime);
+      camera.mouseControl(window.getXChange(), window.getYChange());
 
-    //==================================
+      if (camera.isFlashlightOn()) {
+        spotLights[0].update(camera.getCameraPosition(),
+                             camera.getCameraFront(), camera.getRight());
+      } else {
+        spotLights[0].disable();
+      }
 
-    // rajzolo függvény, használjuk a shaderprogramot:
-    shader.use();
+      // render stuff
+      glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // beallitjuk a texturet
-    brickTexture.useTexture();
-    shader.useMaterial(shinyMaterial, "material.shininess",
-                       "material.specularIntensity");
+      glm::mat4 view = camera.calculateViewMatrix();
+      // berakjuk a kamera helyet igy igazodik a visszaverodes
+      shader.setVec3f(camera.getCameraPosition(), "eyePosition");
 
-    // letrehozzuk a trianglet
-    meshList[0]->renderMesh();
+      shader.setMat4fv(view, "view");
+      shader.setMat4fv(projection, "projection");
 
-    shader.unuse();
+      glm::mat4 model(1.f);
 
-    // magasabbra helyezunk megegy tetraedert
-    model = glm::mat4(1.f);
-    model = glm::translate(model, glm::vec3(0.0f, 1.0f, -3.0f));
-    model = glm::scale(model, glm::vec3(0.4f, 0.4f, 0.4f));
-    shader.setMat4fv(model, "model");
+      model = glm::translate(model, glm::vec3(0.0f, -1.0f, -3.0f));
+      // model = glm::scale(model, glm::vec3(0.4f, 0.4f, 0.4f));
+      // model = glm::rotate(model, glm::radians(triRotation),
+      // glm::vec3(0.0f, 1.0f, 0.0f));
+      shader.setMat4fv(model, "model");
 
-    shader.use();
+      // hasznaljuk a fenyt
+      //==================================
 
-    // beallitjuk a texturet
-    dirtTexture.useTexture();
-    shader.useMaterial(dullMaterial, "material.shininess",
-                       "material.specularIntensity");
+      shader.setDirectionalLight(mainLight);
+      shader.setPointLights(pointLights, pointLightCount);
+      shader.setSpotLights(spotLights, spotLightCount);
 
-    // letrehozzuk a trianglet
-    meshList[1]->renderMesh();
+      //==================================
 
-    // end of render stuff, bufferswap, and event check
-    shader.unuse();
+      // rajzolo függvény, használjuk a shaderprogramot:
+      shader.use();
 
-    // bealltijuk a foldet
+      // beallitjuk a texturet
+      brickTexture.useTexture();
+      shader.useMaterial(shinyMaterial, "material.shininess",
+                         "material.specularIntensity");
 
-    model = glm::mat4(1.f);
-    model = glm::translate(model, glm::vec3(0.0f, -2.0005f, 0.0f));
-    shader.setMat4fv(model, "model");
-    shader.use();
-    // beallitjuk a texturet
-    dirtTexture.useTexture();
-    shader.useMaterial(dullMaterial, "material.shininess",
-                       "material.specularIntensity");
-    // letrehozzuk a floort
-    meshList[2]->renderMesh();
-    shader.unuse();
+      // letrehozzuk a trianglet
+      meshList[0]->renderMesh();
 
-    // ah60
-    model = glm::mat4(1.f);
-    model = glm::translate(model, glm::vec3(3.0f, -2.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));
-    model =
-        glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-    shader.setMat4fv(model, "model");
-    shader.use();
-    shader.useMaterial(shinyMaterial, "material.shininess",
-                       "material.specularIntensity");
-    // letrehozzuk a floort
-    ah60.renderModel();
-    shader.unuse();
+      shader.unuse();
 
-    // dancer
-    model = glm::mat4(1.f);
-    model = glm::translate(model, glm::vec3(-3.0f, 2.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
-    model =
-        glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-    shader.setMat4fv(model, "model");
-    shader.use();
-    shader.useMaterial(shinyMaterial, "material.shininess",
-                       "material.specularIntensity");
-    dancer.renderModel();
-    shader.unuse();
+      // magasabbra helyezunk megegy tetraedert
+      model = glm::mat4(1.f);
+      model = glm::translate(model, glm::vec3(0.0f, 1.0f, -3.0f));
+      model = glm::scale(model, glm::vec3(0.4f, 0.4f, 0.4f));
+      shader.setMat4fv(model, "model");
 
-    // buffer swap(double buffering)
-    window.swapBuffers();
+      shader.use();
+
+      // beallitjuk a texturet
+      dirtTexture.useTexture();
+      shader.useMaterial(dullMaterial, "material.shininess",
+                         "material.specularIntensity");
+
+      // letrehozzuk a trianglet
+      meshList[1]->renderMesh();
+
+      // end of render stuff, bufferswap, and event check
+      shader.unuse();
+
+      // bealltijuk a foldet
+
+      model = glm::mat4(1.f);
+      model = glm::translate(model, glm::vec3(0.0f, -2.0005f, 0.0f));
+      shader.setMat4fv(model, "model");
+      shader.use();
+      // beallitjuk a texturet
+      dirtTexture.useTexture();
+      shader.useMaterial(dullMaterial, "material.shininess",
+                         "material.specularIntensity");
+      // letrehozzuk a floort
+      meshList[2]->renderMesh();
+      shader.unuse();
+
+      // ah60
+      model = glm::mat4(1.f);
+      model = glm::translate(model, glm::vec3(3.0f, -2.0f, 0.0f));
+      model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));
+      model =
+          glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+      shader.setMat4fv(model, "model");
+      shader.use();
+      shader.useMaterial(shinyMaterial, "material.shininess",
+                         "material.specularIntensity");
+      ah60.renderModel();
+      shader.unuse();
+
+      // dancer
+      model = glm::mat4(1.f);
+      model = glm::translate(model, glm::vec3(-3.0f, 2.0f, 0.0f));
+      model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
+      model =
+          glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+      shader.setMat4fv(model, "model");
+      shader.use();
+      shader.useMaterial(shinyMaterial, "material.shininess",
+                         "material.specularIntensity");
+      dancer.renderModel();
+      shader.unuse();
+
+      // buffer swap(double buffering)
+      window.swapBuffers();
+    }
+    std::cout << "GLFW terminate" << std::endl;
+
+    for (auto itr : meshList) {
+      delete itr;
+    }
   }
-
   glfwTerminate(); // terminates glfw library, cleanup
 
   return 0;
