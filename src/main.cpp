@@ -1,4 +1,5 @@
 #define STB_IMAGE_IMPLEMENTATION
+#define STB_EASY_FONT_IMPLEMENTATION
 
 #include <iostream>
 #include <string>
@@ -29,6 +30,7 @@
 #include "Texture.h"
 #include "Window.h"
 
+#include <stb_easy_font.h>
 #include <assimp/Importer.hpp>
 
 // GLuint VAO, VBO, IBO; shader, uniformModel, uniformProjection
@@ -191,6 +193,22 @@ int main() {
     projection = glm::perspective(
         45.0f, (GLfloat)(window.getBufferWidth() / window.getBufferHeight()),
         0.1f, 100.0f);
+    char buffer[99999]; // vertices
+    const char *text = "Hello, HUD!";
+    int x = 300, y = 300;
+
+    // --- Text VBO/VAO ---
+    GLuint textVAO, textVBO;
+    glGenVertexArrays(1, &textVAO);
+    glGenBuffers(1, &textVBO);
+
+    glBindVertexArray(textVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, textVBO);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float),
+                          (void *)0);
+    /* glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 16, (void *)0); */
+    glEnableVertexAttribArray(0);
+    glBindVertexArray(0);
 
     while (!window.getShouldClose()) // returns true if window is closed
     {
@@ -313,11 +331,41 @@ int main() {
       dancer.renderModel();
       shader.unuse();
 
+      // ------ ADDING TEXT HERE ----------
+      int w, h;
+      w = window.getBufferWidth();
+      h = window.getBufferHeight();
+      int num_quads =
+          stb_easy_font_print(x, y, (char *)text, NULL, buffer, sizeof(buffer));
+      std::cout << num_quads << '\n';
+      glm::mat4 ortho = glm::ortho(0.f, (float)w, 0.f, (float)h, -1.f, 1.f);
+
+      textshader.use();
+      textshader.setMat4fv(ortho, "uOrtho");
+      /* glUniformMatrix4fv(glGetUniformLocation(textShader, "uOrtho"), 1, */
+      /*                    GL_FALSE, ortho); */
+      textshader.setVec3f(glm::fvec3{1.f, 1.f, 1.f}, "uColor");
+      /* glUniform3f(glGetUniformLocation(textShader, "uColor"), 1.0, 1.0, 1.0);
+       */
+      textshader.use();
+
+      /* glEnable(GL_BLEND); */
+      /* glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); */
+
+      glBindVertexArray(textVAO);
+      glBindBuffer(GL_ARRAY_BUFFER, textVBO);
+      glBufferData(GL_ARRAY_BUFFER, num_quads * 4 * 16, buffer,
+                   GL_DYNAMIC_DRAW);
+
+      glDisable(GL_DEPTH_TEST);
+      glDrawArrays(GL_QUADS, 0, num_quads * 4);
+      glEnable(GL_DEPTH_TEST);
+      textshader.unuse();
+      // ------ ADDING TEXT HERE ----------
+
       // buffer swap(double buffering)
       window.swapBuffers();
     }
-    std::cout << "GLFW terminate" << std::endl;
-
     for (auto itr : meshList) {
       delete itr;
     }
