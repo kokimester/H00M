@@ -201,7 +201,7 @@ void Shader::setDirectionalLight(DirectionalLight &toSet) {
   // toSet.useLight(uniformDirectionalLight.uniformAmbientIntensity,
   // uniformDirectionalLight.uniformColour,
   //	uniformDirectionalLight.uniformDiffuseIntensity,
-  //uniformDirectionalLight.uniformDirection);
+  // uniformDirectionalLight.uniformDirection);
 }
 
 void Shader::useLight(const DirectionalLight &toUse, const GLchar *colourName,

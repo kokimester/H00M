@@ -52,6 +52,7 @@ option (GLFW_BUILD_EXAMPLES OFF)
 option (GLFW_BUILD_TESTS OFF)
 add_subdirectory (vendor/glfw)
 add_subdirectory (vendor/assimp)
+add_subdirectory (vendor/freetype)
 
 
 #
@@ -59,12 +60,17 @@ add_subdirectory (vendor/assimp)
 #
 include_directories (
     src/
+    src/lights/
+    src/models/
+    src/player/
+    src/utility/
+    src/rendering/
     vendor/glad/include/
     vendor/glfw/include/
     vendor/glm/
     vendor/stb/
     vendor/assimp/include/
-    vendor/freetype-gl/
+    vendor/freetype/include/
                  )
 
 #
@@ -77,11 +83,31 @@ include_directories( ${CMAKE_BINARY_DIR}/vendor/assimp/include/ )
 #
 file (GLOB         VENDORS_SOURCES vendor/glad/src/glad.c)
 file (GLOB_RECURSE PROJECT_HEADERS src/*.hpp
-                                   src/*.h)
+                                   src/*.h
+                                   src/lights/*.hpp
+                                   src/lights/*.h
+                                   src/models/*.hpp
+                                   src/models/*.h
+                                   src/player/*.hpp
+                                   src/player/*.h
+                                   src/utility/*.hpp
+                                   src/utility/*.h
+                                   src/rendering/*.hpp
+                                   src/rendering/*.h
+                                    )
 file (GLOB_RECURSE PROJECT_SOURCES src/*.cpp
-                                   src/*.cxx
-                                   src/*.cc
-                                   src/*.c)
+                                   src/*.c
+                                   src/lights/*.cpp
+                                   src/lights/*.c
+                                   src/models/*.cpp
+                                   src/models/*.c
+                                   src/player/*.cpp
+                                   src/player/*.c
+                                   src/utility/*.cpp
+                                   src/utility/*.c
+                                   src/rendering/*.cpp
+                                   src/rendering/*.c
+                                    )
 file (GLOB_RECURSE PROJECT_SHADERS shaders/*.comp
                                    shaders/*.frag
                                    shaders/*.geom
@@ -111,6 +137,7 @@ target_link_libraries (${PROJECT_NAME}
                        glfw
                        ${GLFW_LIBRARIES}
                        ${GLAD_LIBRARIES}
-                       assimp)
+                       assimp
+                       freetype)
 set_target_properties (${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${PROJECT_NAME})

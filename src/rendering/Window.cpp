@@ -5,8 +5,8 @@ void Window::createCallbacks() {
   glfwSetCursorPosCallback(mainWindow, handleMouse);
 }
 
-void Window::handleKeys(GLFWwindow *window, int key, int code, int action,
-                        int mode) {
+void Window::handleKeys(GLFWwindow *window, int key, [[maybe_unused]] int code,
+                        int action, [[maybe_unused]] int mode) {
   Window *theWindow = static_cast<Window *>(glfwGetWindowUserPointer(window));
 
   if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
@@ -40,16 +40,16 @@ void Window::handleMouse(GLFWwindow *window, double xPos, double yPos) {
 }
 
 Window::Window()
-    : width(800), height(600), bufferHeight(0), bufferWidth(0),
-      mainWindow(NULL), mouseFirstMoved(true), fullScreen(false) {
+    : mainWindow(NULL), fullScreen(false), width(800), height(600),
+      bufferWidth(0), bufferHeight(0), mouseFirstMoved(true) {
   for (size_t i = 0; i < 1024; i++) {
     keys[i] = false;
   }
 }
 
 Window::Window(int wWidth, int wHeight, bool pFullScreen)
-    : width(wWidth), height(wHeight), bufferHeight(0), bufferWidth(0),
-      mainWindow(NULL), mouseFirstMoved(true), fullScreen(pFullScreen) {
+    : mainWindow(NULL), fullScreen(pFullScreen), width(wWidth), height(wHeight),
+      bufferWidth(0), bufferHeight(0), mouseFirstMoved(true) {
   for (size_t i = 0; i < 1024; i++) {
     keys[i] = false;
   }
@@ -100,7 +100,10 @@ int Window::Initialise() {
   glfwSetInputMode(mainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
   gladLoadGL();
-  /* gladLoadGLLoader((GLADloadproc)glfwGetProcAddress); */
+  /* if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) { */
+  /*   std::cout << "Failed to initialize GLAD" << std::endl; */
+  /*   return -1; */
+  /* } */
   // modern extension acces
   /* glewExperimental = GL_TRUE; */
 
@@ -112,8 +115,10 @@ int Window::Initialise() {
   /*   return 1; */
   /* } */
 
-  glEnable(GL_DEPTH_TEST);
+  /* glEnable(GL_DEPTH_TEST); */
 
+  std::cout << "Setting viewport to: " << bufferWidth << "x" << bufferHeight
+            << std::endl;
   glViewport(0, 0, bufferWidth, bufferHeight);
 
   glfwSetWindowUserPointer(mainWindow, this);
@@ -122,7 +127,7 @@ int Window::Initialise() {
   printf("%s: %s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER));
   printf("GLFW\t %s\n", glfwGetVersionString());
   printf("OpenGL\t %s\n", glGetString(GL_VERSION));
-  /* printf("GLSL\t %s\n\n", glGetString(GL_SHADING_LANGUAGE_VERSION)); */
+  printf("GLSL\t %s\n\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
   return 0;
 }
 
@@ -138,7 +143,7 @@ float Window::getYChange() {
   return theChange;
 }
 
-void Window::processInput(Camera &camera) {
+void Window::processInput([[maybe_unused]] Camera &camera) {
 
   // if (glfwGetKey(mainWindow, GLFW_KEY_ESCAPE) == GLFW_PRESS)
   //	glfwSetWindowShouldClose(mainWindow, true);
