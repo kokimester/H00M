@@ -28,18 +28,17 @@ bool Texture::loadTextureAlpha() {
   glGenTextures(1, &textureID);
   glBindTexture(GL_TEXTURE_2D, textureID);
 
-  glTexParameteri(
-      GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
-      GL_REPEAT); // GL_REPEAT GL_MIRRORED_REPEAT GL_CLAMP GL_CLAMP_BORDER
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  // GL_REPEAT GL_MIRRORED_REPEAT GL_CLAMP GL_CLAMP_BORDER
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-                  GL_LINEAR); // GL_LINEAR !! GL_NEAREST
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  // GL_LINEAR !! GL_NEAREST
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
   //.png supports alpha channel (transparency)
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
-               GL_UNSIGNED_BYTE,
-               texData); // GL_RGB vagz GL_RGBA texture fuggo !! mindig 0 !!
+               GL_UNSIGNED_BYTE, texData);
+  // GL_RGB vagz GL_RGBA texture fuggo !! mindig 0 !!
   glGenerateMipmap(GL_TEXTURE_2D); // egyszeru, de hatekonyabb ha en hozom letre
                                    // a mipmapelt textureket
 

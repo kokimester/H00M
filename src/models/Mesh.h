@@ -15,6 +15,8 @@ private:
 public:
   Mesh();
   ~Mesh();
+  Mesh(const Mesh &&);
+  Mesh(const Mesh &) = delete;
   void createMesh(float *vertices, unsigned int *indices, int numOfVertices,
                   int numOfIndices);
   void renderMesh();

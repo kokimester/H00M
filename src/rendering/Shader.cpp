@@ -12,10 +12,13 @@ std::string Shader::loadShaderSource(const char *fileName) {
       sourceCode += temp + "\n";
     }
   } else {
-    std::cerr << "ERROR WHILE OPENING SHADER SOURCODE: " << fileName
+    std::cerr << "ERROR WHILE OPENING SHADER SOURCE CODE: " << fileName
               << std::endl;
   }
   inFile.close();
+
+  // TODO: add to log
+  /* std::cout << "Shader interpreted as: \n" << sourceCode; */
 
   return sourceCode;
 }
@@ -48,7 +51,7 @@ GLuint Shader::addShader(const char *fileName,
   return theShader;
 }
 
-void Shader::linkProgram(GLuint vertexShader, GLuint fragmentShader) {
+int Shader::linkProgram(GLuint vertexShader, GLuint fragmentShader) {
   GLchar eLog[1024] = {0x00};
   GLint result;
 
@@ -56,7 +59,7 @@ void Shader::linkProgram(GLuint vertexShader, GLuint fragmentShader) {
 
   if (!id) {
     std::cout << "Error creating shader" << std::endl;
-    return;
+    return -1;
   }
 
   //-----
@@ -77,6 +80,7 @@ void Shader::linkProgram(GLuint vertexShader, GLuint fragmentShader) {
   if (!result) {
     glGetProgramInfoLog(id, sizeof(eLog), nullptr, eLog);
     std::cout << "Error linking program :" << eLog << std::endl;
+    return -2;
   }
 
   glValidateProgram(id);                           // validaljuk
@@ -84,14 +88,17 @@ void Shader::linkProgram(GLuint vertexShader, GLuint fragmentShader) {
   if (!result) {
     glGetProgramInfoLog(id, sizeof(eLog), nullptr, eLog);
     std::cout << "Error validating program: " << eLog << std::endl;
-    return;
+    return -3;
   }
   // uniformModel = glGetUniformLocation(id, "model");
   // uniformProjection = glGetUniformLocation(id, "projection");
   glUseProgram(0);
+  return 0;
 }
 
-Shader::Shader(const char *vertexFile, const char *fragmentFile) {
+Shader::Shader() {}
+
+int Shader::compile_and_link(const char *vertexFile, const char *fragmentFile) {
   GLuint vertexShader = 0;
   GLuint fragmentShader = 0;
 
@@ -102,10 +109,13 @@ Shader::Shader(const char *vertexFile, const char *fragmentFile) {
   vertexShader = addShader(vertexFile, GL_VERTEX_SHADER);
   fragmentShader = addShader(fragmentFile, GL_FRAGMENT_SHADER);
 
-  linkProgram(vertexShader, fragmentShader);
+  if (linkProgram(vertexShader, fragmentShader)) {
+    return -1;
+  }
 
   glDeleteShader(vertexShader);
   glDeleteShader(fragmentShader);
+  return 0;
 }
 
 void Shader::use() { glUseProgram(id); }
@@ -126,7 +136,7 @@ void Shader::setSpotLights(Spotlight *arrayToSet, unsigned int spotLightCount) {
 
   set1i(spotLightCount, "spotLightCount");
 
-  for (int i = 0; i < spotLightCount; i++) {
+  for (unsigned int i = 0; i < spotLightCount; i++) {
     const int buffsize = 100;
     char locBuff[buffsize] = {0x00};
 
@@ -154,8 +164,15 @@ void Shader::setSpotLights(Spotlight *arrayToSet, unsigned int spotLightCount) {
     snprintf(locBuff, buffsize, "spotLights[%d].direction", i);
     setVec3f(arrayToSet[i].getDirection(), locBuff);
 
+    // TODO: maybe unused, can remove?
     snprintf(locBuff, buffsize, "spotLights[%d].edge", i);
     set1f(arrayToSet[i].getProcEdge(), locBuff);
+
+    snprintf(locBuff, buffsize, "spotLights[%d].innerCutoff", i);
+    set1f(arrayToSet[i].getInnerCutoff(), locBuff);
+
+    snprintf(locBuff, buffsize, "spotLights[%d].outerCutoff", i);
+    set1f(arrayToSet[i].getOuterCutoff(), locBuff);
   }
 }
 
@@ -230,10 +247,18 @@ void Shader::set1i(GLint value, const GLchar *name) {
   unuse();
 }
 
-void Shader::set1f(float value, const GLchar *name) {
+void Shader::set1f(GLfloat value, const GLchar *name) {
   use();
 
   glUniform1f(glGetUniformLocation(id, name), value);
+
+  unuse();
+}
+
+void Shader::set3f(glm::fvec3 value, const GLchar *name) {
+  use();
+
+  glUniform3f(glGetUniformLocation(id, name), value.x, value.y, value.z);
 
   unuse();
 }

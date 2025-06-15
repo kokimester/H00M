@@ -22,6 +22,8 @@ void main()
 	texCoord0 = tex;
 
 	Normal = mat3(transpose(inverse(model))) * norm;
+    // uncomment for normalizing
+    // Normal = normalize(mat3(transpose(inverse(mat3(model)))) * norm);
 
 	FragPos = (model * vec4 (pos, 1.0)).xyz;
 }

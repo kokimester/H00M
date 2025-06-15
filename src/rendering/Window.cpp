@@ -15,10 +15,10 @@ void Window::handleKeys(GLFWwindow *window, int key, [[maybe_unused]] int code,
   if (key >= 0 && key < 1024) {
     if (action == GLFW_PRESS) {
       theWindow->keys[key] = true;
-      printf("Pressed: %d\n", key);
+      /* printf("Pressed: %d\n", key); */
     } else if (action == GLFW_RELEASE) {
       theWindow->keys[key] = false;
-      printf("Released: %d\n", key);
+      /* printf("Released: %d\n", key); */
     }
   }
 }
@@ -61,7 +61,7 @@ int Window::Initialise() {
     return 1;
   }
 
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -93,17 +93,19 @@ int Window::Initialise() {
 
   glfwMakeContextCurrent(mainWindow);
 
+  // Disable VSYNC for maximum FPS
+  /* glfwSwapInterval(0); */
+
   // handle key and mouse input
   createCallbacks();
 
   // lockoljuk az egeret kozepre
   glfwSetInputMode(mainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-  gladLoadGL();
-  /* if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) { */
-  /*   std::cout << "Failed to initialize GLAD" << std::endl; */
-  /*   return -1; */
-  /* } */
+  if (!gladLoadGL()) {
+    std::cout << "Failed to initialize GLAD" << std::endl;
+    return -1;
+  }
   // modern extension acces
   /* glewExperimental = GL_TRUE; */
 

@@ -1,11 +1,24 @@
 #include "Mesh.h"
 
-Mesh::Mesh() : VAO(0), VBO(0), IBO(0), indexCount(0) {}
+Mesh::Mesh() : VAO(0), VBO(0), IBO(0), indexCount(0) {
+  /* std::cout << "Mesh default construction" << std::endl; */
+}
 
-Mesh::~Mesh() { clearMesh(); }
+Mesh::~Mesh() {
+  /* std::cout << "Mesh destructor! (" << VAO << ")" << std::endl; */
+  clearMesh();
+}
+
+Mesh::Mesh(const Mesh &&theOther)
+    : VAO{theOther.VAO}, VBO{theOther.VBO}, IBO{theOther.IBO},
+      indexCount{theOther.indexCount} {
+  /* std::cout << "Mesh move construction (" << VAO << ")" << std::endl; */
+}
 
 void Mesh::createMesh(float *vertices, unsigned int *indices, int numOfVertices,
                       int numOfIndices) {
+  /* std::cout << "creating mesh with " << numOfVertices << " vertices and " */
+  /*           << numOfIndices << " indices\n"; */
   indexCount = numOfIndices;
 
   glGenVertexArrays(1, &VAO);
@@ -47,9 +60,9 @@ void Mesh::renderMesh() {
 }
 
 void Mesh::clearMesh() {
-  // VAO = 0;
-  // VBO = 0;
-  // IBO = 0;
-  // indexCount = 0;
-  // glBindVertexArray(0); //UNBIND
+  /* VAO = 0; */
+  /* VBO = 0; */
+  /* IBO = 0; */
+  /* indexCount = 0; */
+  /* glBindVertexArray(0); // UNBIND */
 }

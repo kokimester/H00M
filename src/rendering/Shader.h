@@ -47,13 +47,18 @@ private:
 
     GLuint uniformDirection;
     GLuint uniformEdge;
+
+    GLuint uniformInnerCutoff;
+    GLuint uniformOuterCutoff;
   } uniformSpotLight[MAX_SPOT_LIGHTS];
 
-  void linkProgram(GLuint vertexShader, GLuint fragmentShader);
+  int linkProgram(GLuint vertexShader, GLuint fragmentShader);
 
 public:
-  Shader(const char *vertexFile, const char *fragmentFile);
+  Shader();
   ~Shader() { glDeleteProgram(id); }
+
+  int compile_and_link(const char *vertexFile, const char *fragmentFile);
 
   void use();
   void unuse();
@@ -71,7 +76,8 @@ public:
                    const GLchar *specularName);
 
   void set1i(GLint value, const GLchar *name);
-  void set1f(float value, const GLchar *name);
+  void set1f(GLfloat value, const GLchar *name);
+  void set3f(glm::fvec3 value, const GLchar *name);
   void setVec2f(glm::fvec2 value, const GLchar *name);
   void setVec3f(glm::fvec3 value, const GLchar *name);
   void setVec4f(glm::fvec4 value, const GLchar *name);
