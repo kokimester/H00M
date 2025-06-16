@@ -12,7 +12,7 @@ void Model::loadModel(const std::string &fileLocation) {
                         aiProcess_JoinIdenticalVertices);
   if (!scene) {
     std::stringstream errS;
-    errS << "Model" << fileLocation
+    errS << "Model " << fileLocation
          << "failed to load: " << importer.GetErrorString() << std::endl;
     throw std::invalid_argument(errS.str());
   }
@@ -116,7 +116,7 @@ void Model::loadMaterials(const aiScene *scene) {
       }
     }
     if (!textureList[i]) {
-      textureList[i] = new Texture("textures/missingtexture.png");
+      textureList[i] = new Texture("../textures/missingtexture.png");
       textureList[i]->loadTexture();
     }
   }

@@ -2,6 +2,8 @@
 /* #include "stb_image.h" */
 
 #include <cstddef>
+#include <cstdlib>
+#include <filesystem>
 #include <iostream>
 #include <map>
 #include <string>
@@ -14,13 +16,13 @@
 #include <vector>
 
 #include <GLFW/glfw3.h>
-#include <ft2build.h>
 #include <glad/glad.h>
-#include FT_FREETYPE_H
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 #include "Camera.h"
 #include "CommonValues.h"
@@ -31,6 +33,7 @@
 #include "PointLight.h"
 #include "Shader.h"
 #include "Spotlight.h"
+#include "Text.h"
 #include "Texture.h"
 #include "Window.h"
 
@@ -41,6 +44,7 @@ GLfloat deltaTime = 0.0f;
 GLfloat lastTime = 0.0f;
 GLfloat lastTimeTextWasRendered = 0.0f;
 std::string timeStr, FPSStr;
+std::string cameraLocStr, cameraFacingStr;
 
 std::vector<Mesh> meshList;
 
@@ -61,18 +65,14 @@ void calcAverageNormals(unsigned int *indices, unsigned int indiceCount,
     unsigned int normalIndex0 = indices[i] * vLength + normalOffset;
     unsigned int normalIndex1 = indices[i + 1] * vLength + normalOffset;
     unsigned int normalIndex2 = indices[i + 2] * vLength + normalOffset;
-    /* glm::vec3 v1(vertices[in1] - vertices[in0], */
-    /*              vertices[in1 + 1] - vertices[in0 + 1], */
-    /*              vertices[in1 + 2] - vertices[in0 + 2]); */
-    /* glm::vec3 v2(vertices[in2] - vertices[in0], */
-    /*              vertices[in2 + 1] - vertices[in0 + 1], */
-    /*              vertices[in2 + 2] - vertices[in0 + 2]); */
-    glm::vec3 v0(vertices[in0], vertices[in0 + 1], vertices[in0 + 2]);
-    glm::vec3 v1(vertices[in1], vertices[in1 + 1], vertices[in1 + 2]);
-    glm::vec3 v2(vertices[in2], vertices[in2 + 1], vertices[in2 + 2]);
+    glm::vec3 v1(vertices[in1] - vertices[in0],
+                 vertices[in1 + 1] - vertices[in0 + 1],
+                 vertices[in1 + 2] - vertices[in0 + 2]);
+    glm::vec3 v2(vertices[in2] - vertices[in0],
+                 vertices[in2 + 1] - vertices[in0 + 1],
+                 vertices[in2 + 2] - vertices[in0 + 2]);
 
-    /* glm::vec3 normal = glm::cross(v1, v2); */
-    glm::vec3 normal = v0 + v1 + v2;
+    glm::vec3 normal = glm::cross(v1, v2);
     normal = glm::normalize(normal);
 
     vertices[normalIndex0] += normal.x;
@@ -86,20 +86,6 @@ void calcAverageNormals(unsigned int *indices, unsigned int indiceCount,
     vertices[normalIndex2] += normal.x;
     vertices[normalIndex2 + 1] += normal.y;
     vertices[normalIndex2 + 2] += normal.z;
-
-    /* in0 += normalOffset; */
-    /* in1 += normalOffset; */
-    /* in2 += normalOffset; */
-
-    /* vertices[in0] += normal.x; */
-    /* vertices[in0 + 1] += normal.y; */
-    /* vertices[in0 + 2] += normal.z; */
-    /* vertices[in1] += normal.x; */
-    /* vertices[in1 + 1] += normal.y; */
-    /* vertices[in1 + 2] += normal.z; */
-    /* vertices[in2] += normal.x; */
-    /* vertices[in2 + 1] += normal.y; */
-    /* vertices[in2 + 2] += normal.z; */
   }
   for (unsigned int i = 0; i < verticeCount / vLength; i++) {
     unsigned int nOffset = i * vLength + normalOffset;
@@ -115,11 +101,11 @@ void calcAverageNormals(unsigned int *indices, unsigned int indiceCount,
 void createTriangle() {
   unsigned int indices[] = {0, 3, 1, 1, 3, 2, 2, 3, 0, 0, 1, 2};
 
-  GLfloat vertices[] = {
-      // x     y     z		  u     v  normals:  nx   ny   nz
-      -1.0f, -1.0f, -0.6f, 0.0f, 0.0f, 0.0f, 0.0f,  0.0f,  0.0f, -1.0f, 1.0f,
-      0.5f,  0.0f,  0.0f,  0.0f, 0.0f, 1.0f, -1.0f, -0.6f, 1.0f, 0.0f,  0.0f,
-      0.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.5f, 1.0f,  0.0f,  0.0f, 0.0f};
+  GLfloat vertices[] = {// x     y     z		u     v   nx    ny    nz
+                        -1.0f, -1.0f, -0.6f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+                        0.0f,  -1.0f, 1.0f,  0.5f, 0.0f, 0.0f, 0.0f, 0.0f,
+                        1.0f,  -1.0f, -0.6f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+                        0.0f,  1.0f,  0.0f,  0.5f, 1.0f, 0.0f, 0.0f, 0.0f};
 
   // uj objektum
 
@@ -143,16 +129,11 @@ void createTriangle() {
   meshList[2].createMesh(floorVertices, floorIndices,
                          sizeof(floorVertices) / sizeof(GLfloat),
                          sizeof(floorIndices) / sizeof(GLfloat));
-
-  /* meshList[0].createMesh(vertices, indices, 32, 12); */
-  /* meshList[1].createMesh(vertices, indices, 32, 12); */
-  /* meshList[2].createMesh(floorVertices, floorIndices, 32, 6); */
 }
 
 // settings
 const unsigned int SCR_WIDTH = 1366;
 const unsigned int SCR_HEIGHT = 768;
-
 
 void errorMessageCallback([[maybe_unused]] GLenum source,
                           [[maybe_unused]] GLenum type,
@@ -164,6 +145,98 @@ void errorMessageCallback([[maybe_unused]] GLenum source,
   std::cout << "errorMessageCallback was called with message: " << message
             << std::endl;
 }
+
+namespace fs = std::filesystem;
+
+int validateShaderFiles(const fs::path &projectPath, const fs::path &shaderDir,
+                        const fs::path &vertexShaderFile,
+                        const fs::path &fragmentShaderFile, Shader &shader) {
+  auto vertexPath = projectPath / shaderDir / vertexShaderFile;
+  auto fragmentPath = projectPath / shaderDir / fragmentShaderFile;
+  if (!std::filesystem::exists(vertexPath) ||
+      !std::filesystem::exists(fragmentPath)) {
+    std::cout << "ERROR::SHADER::MODEL Failed to load shader files."
+              << std::endl;
+    std::cout << vertexPath.string() << std::endl;
+    std::cout << fragmentPath.string() << std::endl;
+    return -1;
+  }
+  std::string vertexFileName = vertexPath;
+  std::string fragmentFileName = fragmentPath;
+  if (shader.compile_and_link(vertexFileName.c_str(),
+                              fragmentFileName.c_str())) {
+    std::cout << "Shader compilation or linking error!\n";
+    return -2;
+  }
+  return 0;
+}
+
+using entity = std::size_t;
+entity MAX_ENTITY = 0;
+entity create_entity() {
+  static entity entities = 0;
+  ++entities;
+  MAX_ENTITY = entities;
+  return entities;
+}
+
+struct transform_component {
+  glm::vec3 pos, vel;
+};
+
+struct model_component {
+  glm::mat4 modelMat{1.f};
+  Model model;
+  Material material;
+  int init(const fs::path &projectPath, const fs::path &filePath) {
+    model.loadModel(projectPath / filePath);
+    return 0;
+  }
+};
+
+struct registry {
+  std::unordered_map<entity, model_component> models;
+  std::unordered_map<entity, transform_component> transforms;
+};
+
+struct model_system {
+
+  void update(registry &reg) {
+    for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
+      if (reg.models.contains(e) && reg.transforms.contains(e)) {
+        glm::mat4 &modelMatrix = reg.models.at(e).modelMat;
+        modelMatrix = glm::mat4{1.f};
+        auto &modelPosition = reg.transforms.at(e).pos;
+        modelMatrix = glm::translate(modelMatrix, modelPosition);
+      }
+    }
+  }
+  void render(registry &reg, Shader &shader) {
+    for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
+      if (reg.models.contains(e)) {
+        auto &modelMatrix = reg.models.at(e).modelMat;
+        auto &model = reg.models.at(e).model;
+        auto &material = reg.models.at(e).material;
+        shader.setMat4fv(modelMatrix, "model");
+        shader.use();
+        shader.useMaterial(material, "material.shininess",
+                           "material.specularIntensity");
+        model.renderModel();
+        shader.unuse();
+      }
+    }
+  }
+};
+
+struct transform_system {
+  void update(registry &reg, float dt) {
+    for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
+      if (reg.transforms.contains(e)) {
+        reg.transforms[e].pos += reg.transforms[e].vel * dt;
+      }
+    }
+  }
+};
 
 int main() {
   {
@@ -193,7 +266,7 @@ int main() {
 
     // light source
     DirectionalLight mainLight =
-        DirectionalLight(1.0f, 1.0f, 1.0f, 0.1f, 0.2f, 0.0f, -1.0f, 0.0f);
+        DirectionalLight({1.0f, 1.0f, 1.0f}, 0.1f, 0.2f, {0.0f, -1.0f, 0.0f});
 
     PointLight pointLights[MAX_POINT_LIGHTS];
 
@@ -202,27 +275,28 @@ int main() {
     unsigned int pointLightCount = 0;
     unsigned int spotLightCount = 0;
 
-    pointLights[0] = PointLight(0.0f, 0.0f, 1.0f, 0.0f, 0.3f, 0.0f, 1.0f, 0.0f,
-                                0.3f, 0.2f, 0.1f);
+    pointLights[0] = PointLight({0.0f, 0.0f, 1.0f}, 0.0f, 0.3f, 0.0f, 1.0f,
+                                0.0f, 0.3f, 0.2f, 0.1f);
     /* pointLightCount++; */
 
-    pointLights[1] = PointLight(0.0f, 1.0f, 0.0f, 0.0f, 0.3f, -4.0f, 2.0f, 0.0f,
-                                0.3f, 0.1f, 0.1f);
+    pointLights[1] = PointLight({0.0f, 1.0f, 0.0f}, 0.0f, 0.3f, -4.0f, 2.0f,
+                                0.0f, 0.3f, 0.1f, 0.1f);
 
     /* pointLightCount++; */
 
     // angles in degrees
-    float inner = 5.f;
-    float outer = 20.f;
+    float inner = 15.f;
+    float outer = 30.f;
 
-    spotLights[0] = Spotlight(
-        1.0f, 1.0f, 1.0f, 0.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f,
-        0.0f, 0.0f, 20.0f, cos(glm::radians(inner)), cos(glm::radians(outer)));
+    spotLights[0] =
+        Spotlight({1.0f, 1.0f, 1.0f}, 0.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f,
+                  0.0f, 1.0f, 0.01f, 0.025f, 20.0f, cos(glm::radians(inner)),
+                  cos(glm::radians(outer)));
 
     spotLightCount++;
 
     spotLights[1] =
-        Spotlight(1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 5.0f, 0.0f, 0.0f, -100.0f,
+        Spotlight({1.0f, 1.0f, 1.0f}, 0.0f, 1.0f, 5.0f, 0.0f, 0.0f, -100.0f,
                   -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 20.0f, inner, outer);
 
     /* spotLightCount++; */
@@ -231,15 +305,28 @@ int main() {
     Material shinyMaterial = Material(4.0f, 256);
     Material dullMaterial = Material(0.3f, 2);
 
-    Model ah60;
-    Model dancer;
+    // Check path
+    auto executablePath = std::filesystem::current_path();
+    auto projectPath = executablePath;
+    std::string_view projectName = "H00M";
+    while (projectPath != projectPath.root_path() &&
+           projectPath.filename() != projectName) {
+      projectPath = projectPath.parent_path();
+      /* std::cout << projectPath.string() << std::endl; */
+    }
+    if (projectPath == projectPath.root_path()) {
+      std::cout << "ERROR::FILESYSTEM: Failed to find project directory!"
+                << std::endl;
+      return -1;
+    }
+    // projectPath is valid from here on out
+
+    Model cube;
     try {
-      /* ah60.loadModel("Models/3ds file.3DS"); */
-      /* dancer.loadModel("Models/Bodymesh.obj"); */
+      cube.loadModel(projectPath / std::filesystem::path("cube-tex.obj"));
     } catch (const std::invalid_argument &err) {
       std::cerr << err.what() << std::endl;
     }
-
     // load textures
     Texture brickTexture("../textures/brick.png");
     brickTexture.loadTextureAlpha();
@@ -247,11 +334,17 @@ int main() {
     dirtTexture.loadTextureAlpha();
     Texture plainTexture("../textures/floor.png");
     plainTexture.loadTextureAlpha();
+
     // compile shaders
     Shader shader;
-    if (shader.compile_and_link("../shaders/vertex_source.glsl.vert",
-                                "../shaders/fragment_source.glsl.frag")) {
-      std::cout << "Shader compilation or linking error!\n";
+    // TODO: collect directories in one place
+    auto shaderDir = std::filesystem::path("shaders");
+    auto vertexShaderFile = std::filesystem::path("vertex_source.glsl.vert");
+    auto fragmentShaderFile =
+        std::filesystem::path("fragment_source.glsl.frag");
+    if (validateShaderFiles(projectPath, shaderDir, vertexShaderFile,
+                            fragmentShaderFile, shader)) {
+      std::cout << "Error occured while validating shader files!\n";
       return -1;
     }
 
@@ -297,8 +390,18 @@ int main() {
     model_system ms;
     transform_system ts;
 
+    registry componentRegistry;
 
-    //------------------TEXT------------------
+    for (int i = 0; i < 1000; ++i) {
+      entity cubeEntity = create_entity();
+      componentRegistry.models[cubeEntity] = model_component{};
+      componentRegistry.models.at(cubeEntity)
+          .init(projectPath, fs::path("cube-tex.obj"));
+
+      componentRegistry.transforms[cubeEntity] =
+          transform_component{{0.f - rand() % 10, 10.f, -3.f - rand() % 10},
+                              {0.f, -0.1f - (float)(rand() % 10) / 10, 0.0f}};
+    }
 
     while (!window.getShouldClose()) // returns true if window is closed
     {
@@ -310,6 +413,11 @@ int main() {
       GLfloat now = glfwGetTime();
       deltaTime = now - lastTime;
       lastTime = now;
+
+      // ----System update functions----
+      ts.update(componentRegistry, deltaTime);
+      ms.update(componentRegistry);
+      // ----System update functions----
 
       camera.keyControl(window.getKeys(), deltaTime);
       camera.mouseControl(window.getXChange(), window.getYChange());
@@ -396,40 +504,24 @@ int main() {
       meshList[2].renderMesh();
       shader.unuse();
 
-      // ah60
+      // cube
       model = glm::mat4(1.f);
-      model = glm::translate(model, glm::vec3(3.0f, -2.0f, 0.0f));
-      model = glm::scale(model, glm::vec3(0.05f, 0.05f, 0.05f));
-      model =
-          glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+      auto cubePos = glm::vec3(-2.0f, 1.0f, -3.0f);
+      auto cubeScale = glm::vec3(0.5f);
+      auto cubeRotation = glm::radians(-90.0f);
+      auto cubeRotationVector = glm::vec3(1.0f, 0.0f, 0.0f);
+      model = glm::translate(model, cubePos);
+      model = glm::scale(model, cubeScale);
+      model = glm::rotate(model, cubeRotation, cubeRotationVector);
       shader.setMat4fv(model, "model");
       shader.use();
       shader.useMaterial(shinyMaterial, "material.shininess",
                          "material.specularIntensity");
-      ah60.renderModel();
+      cube.renderModel();
       shader.unuse();
 
-      // dancer
-      model = glm::mat4(1.f);
-      model = glm::translate(model, glm::vec3(-3.0f, 2.0f, 0.0f));
-      model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
-      model =
-          glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-      shader.setMat4fv(model, "model");
-      shader.use();
-      shader.useMaterial(shinyMaterial, "material.shininess",
-                         "material.specularIntensity");
-      dancer.renderModel();
-      shader.unuse();
+      ms.render(componentRegistry, shader);
 
-      if (now - lastTimeTextWasRendered > 0.1f) {
-        lastTimeTextWasRendered = now;
-        timeStr = "Elapsed time: " +
-                  std::to_string(static_cast<unsigned int>(
-                      std::floor(deltaTime * 1000.f))) +
-                  " ms";
-        FPSStr = "FPS: " + std::to_string(static_cast<unsigned int>(
-                               std::floor(1.f / deltaTime)));
       {
         if (now - lastTimeTextWasRendered > 0.1f) {
           lastTimeTextWasRendered = now;

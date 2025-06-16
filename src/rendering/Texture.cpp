@@ -22,13 +22,13 @@ bool Texture::loadTextureAlpha() {
   unsigned char *texData =
       stbi_load(fileLocation, &width, &height, &bitDepth, 0);
   if (!texData) {
-    printf("Failed to find texture at location: %s", fileLocation);
+    printf("Failed to find texture at location: %s\n", fileLocation);
     return false;
   }
   glGenTextures(1, &textureID);
   glBindTexture(GL_TEXTURE_2D, textureID);
 
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
   // GL_REPEAT GL_MIRRORED_REPEAT GL_CLAMP GL_CLAMP_BORDER
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -52,7 +52,7 @@ bool Texture::loadTexture() {
   unsigned char *texData =
       stbi_load(fileLocation, &width, &height, &bitDepth, 0);
   if (!texData) {
-    printf("Failed to find texture at location: %s", fileLocation);
+    printf("Failed to find texture at location: %s\n", fileLocation);
     return false;
   }
   glGenTextures(1, &textureID);
