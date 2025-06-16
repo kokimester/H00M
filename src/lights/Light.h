@@ -6,16 +6,16 @@
 
 class Light {
 protected:
-  glm::vec3 colour;
+  glm::vec3 color;
   float ambientIntensity;
   float diffuseIntensity;
 
 public:
   Light();
-  Light(float red, float green, float blue, float aIntensity, float dIntensity);
+  Light(glm::vec3 pColor, float aIntensity, float dIntensity);
   ~Light();
 
-  glm::vec3 getColour() const { return colour; }
+  glm::vec3 getColor() const { return color; }
   float getAmbientIntensity() const { return ambientIntensity; }
   float getDiffuseIntensity() const { return diffuseIntensity; }
 };

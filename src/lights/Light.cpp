@@ -1,14 +1,13 @@
 #include "Light.h"
 
 Light::Light() {
-  colour = glm::vec3(1.0f, 1.0f, 1.0f);
+  color = glm::vec3(1.0f, 1.0f, 1.0f);
   ambientIntensity = 1.0f;
   diffuseIntensity = 0.0f;
 }
 
-Light::Light(float red, float green, float blue, float aIntensity,
-             float dIntensity) {
-  colour = glm::vec3(red, green, blue);
+Light::Light(glm::vec3 pColor, float aIntensity, float dIntensity)
+    : color{pColor} {
   ambientIntensity = aIntensity;
   diffuseIntensity = dIntensity;
 }

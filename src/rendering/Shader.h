@@ -25,7 +25,7 @@ private:
   int spotLightCount;
 
   struct {
-    GLuint uniformColour;
+    GLuint uniformColor;
     GLuint uniformAmbientIntensity;
     GLuint uniformDiffuseIntensity;
 
@@ -36,7 +36,7 @@ private:
   } uniformPointLight[MAX_POINT_LIGHTS];
 
   struct {
-    GLuint uniformColour;
+    GLuint uniformColor;
     GLuint uniformAmbientIntensity;
     GLuint uniformDiffuseIntensity;
 
@@ -69,7 +69,7 @@ public:
   void setPointLights(PointLight *arrayToSet, unsigned int lightCount);
   void setDirectionalLight(DirectionalLight &toSet);
 
-  void useLight(const DirectionalLight &toUse, const GLchar *colourName,
+  void useLight(const DirectionalLight &toUse, const GLchar *colorName,
                 const GLchar *ambientName, const GLchar *directionName,
                 const GLchar *diffuseName);
   void useMaterial(const Material &toUse, const GLchar *shininessName,

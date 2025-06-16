@@ -9,12 +9,12 @@ private:
 
 public:
   DirectionalLight();
-  DirectionalLight(float red, float green, float blue, float aIntensity,
-                   float dIntensity, float xDir, float yDir, float zDir);
+  DirectionalLight(const glm::vec3 &color, float aIntensity, float dIntensity,
+                   const glm::vec3 &direction);
 
   glm::vec3 getDirection() const { return direction; }
 
-  void useLight(uint ambientIntensityLocation, uint ambientColourLocation,
+  void useLight(uint ambientIntensityLocation, uint ambientColorLocation,
                 uint diffuseIntensityLocation, uint directionLocation);
 
   ~DirectionalLight() {};

@@ -9,9 +9,9 @@ protected:
 
 public:
   PointLight();
-  PointLight(float red, float green, float blue, float aIntensity,
-             float dIntensity, float xPos, float yPos, float zPos, float pConst,
-             float pLinear, float pExp);
+  PointLight(const glm::vec3 &pColor, float aIntensity, float dIntensity,
+             float xPos, float yPos, float zPos, float pConst, float pLinear,
+             float pExp);
   ~PointLight() {}
 
   glm::vec3 getPos() const { return position; }
@@ -19,7 +19,7 @@ public:
   float getLinear() const { return linear; }
   float getExp() const { return exponent; }
 
-  void useLight(uint ambientIntensityLocation, uint ambientColourLocation,
+  void useLight(uint ambientIntensityLocation, uint ambientColorLocation,
                 uint diffuseIntensityLocation, uint positionLocation,
                 uint constantLocation, uint linearLocation,
                 uint exponentLocation);

@@ -6,6 +6,7 @@ layout (location=2) in vec3 norm;
 
 out vec4 vCol;
 out vec2 texCoord0;
+// flat out vec3 Normal;
 out vec3 Normal;
 out vec3 FragPos;
 
@@ -21,6 +22,7 @@ void main()
 	vCol=vec4(clamp(pos, 0.0f, 1.0f), 1.0f);
 	texCoord0 = tex;
 
+    //problem is we are smooth shading a hard edged shape
 	Normal = mat3(transpose(inverse(model))) * norm;
     // uncomment for normalizing
     // Normal = normalize(mat3(transpose(inverse(mat3(model)))) * norm);

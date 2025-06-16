@@ -10,11 +10,10 @@ private:
 
 public:
   Spotlight();
-  Spotlight(GLfloat red, GLfloat green, GLfloat blue, GLfloat aIntensity,
-            GLfloat dIntensity, GLfloat xPos, GLfloat yPos, GLfloat zPos,
-            GLfloat xDir, GLfloat yDir, GLfloat zDir, GLfloat pConst,
-            GLfloat pLinear, GLfloat pExp, GLfloat pEdge, GLfloat pInner,
-            GLfloat pOuter);
+  Spotlight(const glm::vec3 &pColor, GLfloat aIntensity, GLfloat dIntensity,
+            GLfloat xPos, GLfloat yPos, GLfloat zPos, GLfloat xDir,
+            GLfloat yDir, GLfloat zDir, GLfloat pConst, GLfloat pLinear,
+            GLfloat pExp, GLfloat pEdge, GLfloat pInner, GLfloat pOuter);
 
   glm::vec3 getDirection() const { return direction; }
   GLfloat getEdge() const { return edge; }
@@ -30,7 +29,7 @@ public:
 
   void disable() { direction = glm::vec3(0.0f, 1.0f, 0.0f); }
 
-  void useLight(GLuint ambientIntensityLocation, GLuint ambientColourLocation,
+  void useLight(GLuint ambientIntensityLocation, GLuint ambientColorLocation,
                 GLuint diffuseIntensityLocation, GLuint positionLocation,
                 GLuint directionLocation, GLuint constantLocation,
                 GLuint linearLocation, GLuint exponentLocation,

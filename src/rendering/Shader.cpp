@@ -140,8 +140,8 @@ void Shader::setSpotLights(Spotlight *arrayToSet, unsigned int spotLightCount) {
     const int buffsize = 100;
     char locBuff[buffsize] = {0x00};
 
-    snprintf(locBuff, buffsize, "spotLights[%d].base.base.colour", i);
-    setVec3f(arrayToSet[i].getColour(), locBuff);
+    snprintf(locBuff, buffsize, "spotLights[%d].base.base.color", i);
+    setVec3f(arrayToSet[i].getColor(), locBuff);
 
     snprintf(locBuff, buffsize, "spotLights[%d].base.base.ambientIntensity", i);
     set1f(arrayToSet[i].getAmbientIntensity(), locBuff);
@@ -187,8 +187,8 @@ void Shader::setPointLights(PointLight *arrayToSet, unsigned int lightCount) {
     const int buffsize = 100;
     char locBuff[buffsize] = {0x00};
 
-    snprintf(locBuff, buffsize, "pointLights[%d].base.colour", i);
-    setVec3f(arrayToSet[i].getColour(), locBuff);
+    snprintf(locBuff, buffsize, "pointLights[%d].base.color", i);
+    setVec3f(arrayToSet[i].getColor(), locBuff);
 
     snprintf(locBuff, buffsize, "pointLights[%d].base.ambientIntensity", i);
     set1f(arrayToSet[i].getAmbientIntensity(), locBuff);
@@ -211,20 +211,20 @@ void Shader::setPointLights(PointLight *arrayToSet, unsigned int lightCount) {
 }
 
 void Shader::setDirectionalLight(DirectionalLight &toSet) {
-  setVec3f(toSet.getColour(), "directionalLight.base.colour");
+  setVec3f(toSet.getColor(), "directionalLight.base.color");
   set1f(toSet.getAmbientIntensity(), "directionalLight.base.ambientIntensity");
   setVec3f(toSet.getDirection(), "directionalLight.direction");
   set1f(toSet.getDiffuseIntensity(), "directionalLight.base.diffuseIntensity");
   // toSet.useLight(uniformDirectionalLight.uniformAmbientIntensity,
-  // uniformDirectionalLight.uniformColour,
+  // uniformDirectionalLight.uniformColor,
   //	uniformDirectionalLight.uniformDiffuseIntensity,
   // uniformDirectionalLight.uniformDirection);
 }
 
-void Shader::useLight(const DirectionalLight &toUse, const GLchar *colourName,
+void Shader::useLight(const DirectionalLight &toUse, const GLchar *colorName,
                       const GLchar *ambientName, const GLchar *directionName,
                       const GLchar *diffuseName) {
-  setVec3f(toUse.getColour(), colourName);
+  setVec3f(toUse.getColor(), colorName);
   set1f(toUse.getAmbientIntensity(), ambientName);
   setVec3f(toUse.getDirection(), directionName);
   set1f(toUse.getDiffuseIntensity(), diffuseName);

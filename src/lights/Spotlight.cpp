@@ -6,28 +6,27 @@ Spotlight::Spotlight() : PointLight() {
   procEdge = cosf(glm::radians(edge));
 }
 
-Spotlight::Spotlight(GLfloat red, GLfloat green, GLfloat blue,
-                     GLfloat aIntensity, GLfloat dIntensity, GLfloat xPos,
-                     GLfloat yPos, GLfloat zPos, GLfloat xDir, GLfloat yDir,
-                     GLfloat zDir, GLfloat pConst, GLfloat pLinear,
-                     GLfloat pExp, GLfloat pEdge, GLfloat pInner,
-                     GLfloat pOuter)
-    : PointLight(red, green, blue, aIntensity, dIntensity, xPos, yPos, zPos,
-                 pConst, pLinear, pExp),
+Spotlight::Spotlight(const glm::vec3 &pColor, GLfloat aIntensity,
+                     GLfloat dIntensity, GLfloat xPos, GLfloat yPos,
+                     GLfloat zPos, GLfloat xDir, GLfloat yDir, GLfloat zDir,
+                     GLfloat pConst, GLfloat pLinear, GLfloat pExp,
+                     GLfloat pEdge, GLfloat pInner, GLfloat pOuter)
+    : PointLight(pColor, aIntensity, dIntensity, xPos, yPos, zPos, pConst,
+                 pLinear, pExp),
       edge{pEdge}, innerCutoff{pInner}, outerCutoff{pOuter} {
   direction = glm::normalize(glm::vec3(xDir, yDir, zDir));
   procEdge = cosf(glm::radians(edge));
 }
 
 void Spotlight::useLight(GLuint ambientIntensityLocation,
-                         GLuint ambientColourLocation,
+                         GLuint ambientColorLocation,
                          GLuint diffuseIntensityLocation,
                          GLuint positionLocation, GLuint directionLocation,
                          GLuint constantLocation, GLuint linearLocation,
                          GLuint exponentLocation, GLuint edgeLocation,
                          GLuint innerCutoffLocation,
                          GLuint outerCutoffLocation) {
-  glUniform3f(ambientColourLocation, colour.x, colour.y, colour.z);
+  glUniform3f(ambientColorLocation, color.x, color.y, color.z);
   glUniform1f(ambientIntensityLocation, ambientIntensity);
   glUniform1f(diffuseIntensityLocation, diffuseIntensity);
 

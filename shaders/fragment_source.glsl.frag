@@ -2,17 +2,18 @@
 
 in vec4 vCol;
 in vec2 texCoord0;
+// flat in vec3 Normal;
 in vec3 Normal;
 in vec3 FragPos;
 
-out vec4 colour;
+out vec4 color;
 
 const int MAX_POINT_LIGHTS = 3;
 const int MAX_SPOT_LIGHTS = 3;
 
 struct Light
 {
-	vec3 colour;
+	vec3 color;
 	float ambientIntensity;
 	float diffuseIntensity;
 };
@@ -62,15 +63,17 @@ uniform vec3 eyePosition;
 
 vec4 CalcLightByDirection(Light light, vec3 direction)
 {
-	vec4 ambientColour = vec4(light.colour, 1.0f) * light.ambientIntensity;
+	vec4 ambientColor = vec4(light.color, 1.0f) * light.ambientIntensity;
 
 	float diffuseFactor = max(dot(normalize(Normal) , normalize(direction)), 0.0f);
-	vec4 diffuseColour = vec4(light.colour, 1.0f) * light.diffuseIntensity * diffuseFactor;
+	vec4 diffuseColor = vec4(light.color, 1.0f) * light.diffuseIntensity * diffuseFactor;
 
-	vec4 specularColour = vec4(0,0,0,0);
+	vec4 specularColor = vec4(0,0,0,0);
 
 	if(diffuseFactor > 0.0f)
 	{
+        //this code makes it so if you look at a wall at an angle
+        //you will not see the light reflecting back to your eye
 		vec3 fragToEye = normalize(eyePosition - FragPos);
 		vec3 reflectedVertex = normalize(reflect(direction, normalize(Normal)));
 
@@ -78,10 +81,10 @@ vec4 CalcLightByDirection(Light light, vec3 direction)
 		if (specularFactor > 0.0f)
 		{
 			specularFactor = pow(specularFactor, material.shininess);
-			specularColour = vec4(light.colour * material.specularIntensity * specularFactor, 1.0f);
+			specularColor = vec4(light.color * material.specularIntensity * specularFactor, 1.0f);
 		}
 	}
-	return (ambientColour + diffuseColour + specularColour);
+	return (ambientColor + diffuseColor + specularColor);
 }
 
 vec4 CalcDirectionalLight()
@@ -95,11 +98,11 @@ vec4 CalcPointLight(PointLight pLight)
 		float distance = length(direction);
 		direction = normalize(direction);
 
-		vec4 colour = CalcLightByDirection(pLight.base, direction);
+		vec4 color = CalcLightByDirection(pLight.base, direction);
 		float attenuation = pLight.exponent * distance * distance +
 							pLight.linear * distance +
 							pLight.constant;
-		return (colour / attenuation);
+		return (color / attenuation);
 }
 
 vec4 CalcSpotLight(Spotlight sLight)
@@ -117,8 +120,8 @@ vec4 CalcSpotLight(Spotlight sLight)
     //dead code after this
 	if (slFactor > sLight.edge)
 	{
-		vec4 colour = CalcPointLight(sLight.base);
-		return colour * (1.0f - (1.0f - slFactor)*(1.0f / (1.0f - sLight.edge)));
+		vec4 color = CalcPointLight(sLight.base);
+		return color * (1.0f - (1.0f - slFactor)*(1.0f / (1.0f - sLight.edge)));
 	}
 	else
 	{
@@ -128,34 +131,34 @@ vec4 CalcSpotLight(Spotlight sLight)
 
 vec4 CalcSpotLights()
 {
-	vec4 totalColour = vec4(0,0,0,0);
+	vec4 totalColor = vec4(0,0,0,0);
 	 for(int i=0;i<spotLightCount;i++)
 	 {
-		totalColour += CalcSpotLight(spotLights[i]);
+		totalColor += CalcSpotLight(spotLights[i]);
 	 }
-	return totalColour;
+	return totalColor;
 }
 
 vec4 CalcPointLights()
 {
-	 vec4 totalColour = vec4(0,0,0,0);
+	 vec4 totalColor = vec4(0,0,0,0);
 	 for(int i=0;i<pointLightCount;i++)
 	 {
-		totalColour += CalcPointLight(pointLights[i]);
+		totalColor += CalcPointLight(pointLights[i]);
 	 }
-	return totalColour;
+	return totalColor;
 }
 
 void main()
 {
-	vec4 finalColour = CalcDirectionalLight();
-	finalColour += CalcPointLights();
-	finalColour += CalcSpotLights();
+	vec4 finalColor = CalcDirectionalLight();
+	finalColor += CalcPointLights();
+	finalColor += CalcSpotLights();
     // 10% ambient light in case there is not enough light
-    finalColour += vec4(0.1, 0.1, 0.1, 0.0);
+    finalColor += vec4(0.1, 0.1, 0.1, 0.0);
 
-	colour = texture(theTexture,texCoord0) * finalColour;
+	color = texture(theTexture,texCoord0) * finalColor;
     //uncomment to check normals
-    //colour = vec4(normalize(Normal) * 0.5 + 0.5, 1.0);
+    // color = vec4(normalize(Normal) * 0.5 + 0.5, 1.0);
 
 }
