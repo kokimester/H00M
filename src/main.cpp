@@ -153,65 +153,6 @@ void createTriangle() {
 const unsigned int SCR_WIDTH = 1366;
 const unsigned int SCR_HEIGHT = 768;
 
-//---------------TEXT RENDERING---------------
-struct Character {
-  unsigned int TextureID;
-  glm::ivec2 Size;
-  glm::ivec2 Bearing;
-  unsigned int Advance;
-};
-
-std::map<char, Character> Characters;
-unsigned int VAO, VBO;
-
-void RenderText_common(std::string text, float x, float y, float scale) {
-  glActiveTexture(GL_TEXTURE1);
-  glBindVertexArray(VAO);
-
-  // iterate through all characters
-  std::string::const_iterator c;
-  for (c = text.begin(); c != text.end(); c++) {
-    Character ch = Characters[*c];
-
-    float xpos = x + ch.Bearing.x * scale;
-    float ypos = y - (ch.Size.y - ch.Bearing.y) * scale;
-
-    float w = ch.Size.x * scale;
-    float h = ch.Size.y * scale;
-    // update VBO for each character
-    float vertices[6][4] = {
-        {xpos, ypos + h, 0.0f, 0.0f},    {xpos, ypos, 0.0f, 1.0f},
-        {xpos + w, ypos, 1.0f, 1.0f},
-
-        {xpos, ypos + h, 0.0f, 0.0f},    {xpos + w, ypos, 1.0f, 1.0f},
-        {xpos + w, ypos + h, 1.0f, 0.0f}};
-    // render glyph texture over quad
-    glBindTexture(GL_TEXTURE_2D, ch.TextureID);
-    // update content of VBO memory
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    // be sure to use glBufferSubData and not glBufferData
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    // render quad
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    // now advance cursors for next glyph (note that advance is number of 1/64
-    // pixels)
-    x += (ch.Advance >> 6) * scale;
-    // bitshift by 6 to get value in pixels (2^6 = 64 (divide amount
-    // of 1/64th pixels by 64 to get amount of pixels))
-  }
-  glBindVertexArray(0);
-  glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-void RenderText(Shader &shader, std::string text, float x, float y, float scale,
-                glm::vec3 color) {
-  // activate corresponding render state
-  shader.set3f(color, "textColor");
-  shader.use();
-  RenderText_common(text, x, y, scale);
-}
-//---------------TEXT RENDERING---------------
 
 void errorMessageCallback([[maybe_unused]] GLenum source,
                           [[maybe_unused]] GLenum type,
@@ -322,90 +263,40 @@ int main() {
                          0.1f, 100.0f);
 
     //------------------TEXT------------------
-    Shader textshader;
-    if (textshader.compile_and_link("../shaders/text.vert",
-                                    "../shaders/text.frag")) {
-      std::cout << "Text shader compilation or linking error!\n";
-      return -1;
-    }
-    glm::mat4 textprojection = glm::ortho(0.0f, static_cast<float>(SCR_WIDTH),
-                                          0.0f, static_cast<float>(SCR_HEIGHT));
-    // this has to match the GL_TEXTURE{text} in the rendering function
-    textshader.set1i(1, "text");
-    textshader.setMat4fv(textprojection, "projection");
+    TextRenderer textrenderer(SCR_WIDTH, SCR_HEIGHT);
 
-    // FreeType
-    // --------
-    FT_Library ft;
-    // All functions return a value different than 0 whenever an error occurred
-    if (FT_Init_FreeType(&ft)) {
-      std::cout << "ERROR::FREETYPE: Could not init FreeType Library"
+    auto textVertexShaderFile = std::filesystem::path("text.vert");
+    auto textFragmentShaderFile = std::filesystem::path("text.frag");
+    auto textVertexPath = projectPath / shaderDir / textVertexShaderFile;
+    auto textFragmentPath = projectPath / shaderDir / textFragmentShaderFile;
+    if (!std::filesystem::exists(textVertexPath) ||
+        !std::filesystem::exists(textFragmentPath)) {
+      std::cout << "ERROR::SHADER::TEXT Failed to load shader files."
                 << std::endl;
+      std::cout << textVertexPath.string() << std::endl;
+      std::cout << textFragmentPath.string() << std::endl;
       return -1;
     }
-
-    // find path to font
-    std::string font_name = "../fonts/Consolas-Bold.ttf";
-    if (font_name.empty()) {
+    //  find path to font
+    auto fontDir = std::filesystem::path("fonts");
+    auto fontFile = std::filesystem::path("Consolas-Bold.ttf");
+    auto defaultFontPath = projectPath / fontDir / fontFile;
+    if (!std::filesystem::exists(defaultFontPath)) {
       std::cout << "ERROR::FREETYPE: Failed to load font_name" << std::endl;
       return -1;
     }
 
-    // load font as face
-    FT_Face face;
-    if (FT_New_Face(ft, font_name.c_str(), 0, &face)) {
-      std::cout << "ERROR::FREETYPE: Failed to load font: " << font_name
+    if (textrenderer.init(textVertexPath, textFragmentPath, defaultFontPath)) {
+      std::cout << "ERROR::TEXTRENDERER: Failed to init FontRenderer"
                 << std::endl;
       return -1;
     }
 
-    // set size to load glyphs as
-    FT_Set_Pixel_Sizes(face, 0, 24);
+    //------------------TEXT------------------
 
-    // disable byte-alignment restriction
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    model_system ms;
+    transform_system ts;
 
-    // load first 128 characters of ASCII set
-    for (unsigned char c = 0; c < 128; c++) {
-      // Load character glyph
-      if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
-        std::cout << "ERROR::FREETYTPE: Failed to load Glyph" << std::endl;
-        continue;
-      }
-      // generate texture
-      unsigned int texture;
-      glGenTextures(1, &texture);
-      glBindTexture(GL_TEXTURE_2D, texture);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, face->glyph->bitmap.width,
-                   face->glyph->bitmap.rows, 0, GL_RED, GL_UNSIGNED_BYTE,
-                   face->glyph->bitmap.buffer);
-      // set texture options
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-      // now store character for later use
-      Character character = {
-          texture,
-          glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
-          glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
-          static_cast<unsigned int>(face->glyph->advance.x)};
-      Characters.insert(std::pair<char, Character>(c, character));
-    }
-    // destroy FreeType once we're finished
-    FT_Done_Face(face);
-    FT_Done_FreeType(ft);
-    // configure VAO/VBO for texture quads
-    // -----------------------------------
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
 
     //------------------TEXT------------------
 
@@ -539,19 +430,33 @@ int main() {
                   " ms";
         FPSStr = "FPS: " + std::to_string(static_cast<unsigned int>(
                                std::floor(1.f / deltaTime)));
+      {
+        if (now - lastTimeTextWasRendered > 0.1f) {
+          lastTimeTextWasRendered = now;
+          timeStr = "Elapsed time: " +
+                    std::to_string(static_cast<unsigned int>(
+                        std::floor(deltaTime * 1000.f))) +
+                    " ms";
+          FPSStr = "FPS: " + std::to_string(static_cast<unsigned int>(
+                                 std::floor(1.f / deltaTime)));
+          cameraLocStr = std::string("CAM location: ") +
+                         glm::to_string(camera.getCameraPosition());
+          cameraFacingStr = std::string("CAM facing: ") +
+                            glm::to_string(camera.getCameraFront());
+        }
+        // ------ ADDING TEXT RENDER HERE ----------
+        textrenderer.renderText(timeStr, 0.0f, SCR_HEIGHT - 24, 0.5f,
+                                glm::vec3(1.0f, 1.0f, 1.0f));
+        textrenderer.renderText(FPSStr, 0.0f, SCR_HEIGHT - 2 * 24, 0.5f,
+                                glm::vec3(1.0f, 1.0f, 1.0f));
+        textrenderer.renderText(cameraLocStr, 0.0f, SCR_HEIGHT - 3 * 24, 0.5f,
+                                glm::vec3(1.0f, 1.0f, 1.0f));
+        textrenderer.renderText(cameraFacingStr, 0.0f, SCR_HEIGHT - 4 * 24,
+                                0.5f, glm::vec3(1.0f, 1.0f, 1.0f));
+        // ------ ADDING TEXT RENDER HERE ----------
       }
-      glDisable(GL_DEPTH_TEST);
-      glEnable(GL_BLEND);
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-      // ------ ADDING TEXT RENDER HERE ----------
-      RenderText(textshader, timeStr, 0.0f, SCR_HEIGHT - 24, 1.0f,
-                 glm::vec3(1.0f, 1.0f, 1.f));
-      RenderText(textshader, FPSStr, 0.0f, SCR_HEIGHT - 2 * 24, 1.0f,
-                 glm::vec3(1.0f, 1.0f, 1.f));
-      // ------ ADDING TEXT RENDER HERE ----------
-      glDisable(GL_BLEND);
-      glEnable(GL_DEPTH_TEST);
 
+      // Print GL errors
       GLenum err;
       while ((err = glGetError()) != GL_NO_ERROR) {
         std::cout << "OpenGL error: " << err << std::endl;
