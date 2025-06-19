@@ -44,7 +44,7 @@ GLfloat deltaTime = 0.0f;
 GLfloat lastTime = 0.0f;
 GLfloat lastTimeTextWasRendered = 0.0f;
 std::string timeStr, FPSStr;
-std::string cameraLocStr, cameraFacingStr;
+std::string cameraLocStr, cameraFacingStr, entityCountStr;
 
 std::vector<Mesh> meshList;
 
@@ -186,11 +186,13 @@ struct transform_component {
 
 struct model_component {
   glm::mat4 modelMat{1.f};
-  Model model;
+  Model &model;
   Material material;
-  int init(const fs::path &projectPath, const fs::path &filePath) {
-    model.loadModel(projectPath / filePath);
-    return 0;
+  model_component(Model &model) : model{model} {}
+  model_component(const model_component &theOther) : model{theOther.model} {}
+  model_component &operator=(const model_component theOther) {
+    model = theOther.model;
+    return *this;
   }
 };
 
@@ -392,16 +394,19 @@ int main() {
 
     registry componentRegistry;
 
-    for (int i = 0; i < 1000; ++i) {
-      entity cubeEntity = create_entity();
-      componentRegistry.models[cubeEntity] = model_component{};
-      componentRegistry.models.at(cubeEntity)
-          .init(projectPath, fs::path("cube-tex.obj"));
-
-      componentRegistry.transforms[cubeEntity] =
-          transform_component{{0.f - rand() % 10, 10.f, -3.f - rand() % 10},
-                              {0.f, -0.1f - (float)(rand() % 10) / 10, 0.0f}};
-    }
+    auto addEntities = [&](unsigned int count = 100) {
+      if (MAX_ENTITY >= 20000) {
+        std::cout << "Entity cap reached" << std::endl;
+        return;
+      }
+      for (unsigned int i = 0; i < count; ++i) {
+        entity cubeEntity = create_entity();
+        componentRegistry.models.emplace(cubeEntity, model_component{cube});
+        componentRegistry.transforms[cubeEntity] =
+            transform_component{{0.f - rand() % 40, 10.f, -3.f - rand() % 40},
+                                {0.f, -0.1f - (float)(rand() % 10) / 10, 0.0f}};
+      }
+    };
 
     while (!window.getShouldClose()) // returns true if window is closed
     {
@@ -522,6 +527,12 @@ int main() {
 
       ms.render(componentRegistry, shader);
 
+      auto keys = window.getKeys();
+      if (keys[GLFW_KEY_E]) {
+        addEntities(1000);
+        keys[GLFW_KEY_E] = false;
+      }
+
       {
         if (now - lastTimeTextWasRendered > 0.1f) {
           lastTimeTextWasRendered = now;
@@ -535,6 +546,8 @@ int main() {
                          glm::to_string(camera.getCameraPosition());
           cameraFacingStr = std::string("CAM facing: ") +
                             glm::to_string(camera.getCameraFront());
+          cameraFacingStr =
+              std::string("Entities: ") + std::to_string(MAX_ENTITY);
         }
         // ------ ADDING TEXT RENDER HERE ----------
         textrenderer.renderText(timeStr, 0.0f, SCR_HEIGHT - 24, 0.5f,
@@ -545,6 +558,8 @@ int main() {
                                 glm::vec3(1.0f, 1.0f, 1.0f));
         textrenderer.renderText(cameraFacingStr, 0.0f, SCR_HEIGHT - 4 * 24,
                                 0.5f, glm::vec3(1.0f, 1.0f, 1.0f));
+        textrenderer.renderText(entityCountStr, 0.0f, SCR_HEIGHT - 4 * 24, 0.5f,
+                                glm::vec3(1.0f, 1.0f, 1.0f));
         // ------ ADDING TEXT RENDER HERE ----------
       }
 
