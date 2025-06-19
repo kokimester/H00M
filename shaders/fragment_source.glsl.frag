@@ -155,7 +155,7 @@ void main()
 	finalColor += CalcPointLights();
 	finalColor += CalcSpotLights();
     // 10% ambient light in case there is not enough light
-    finalColor += vec4(0.1, 0.1, 0.1, 0.0);
+    //finalColor += vec4(0.1, 0.1, 0.1, 0.0);
 
 	color = texture(theTexture,texCoord0) * finalColor;
     //uncomment to check normals

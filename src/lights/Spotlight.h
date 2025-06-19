@@ -27,7 +27,8 @@ public:
     direction = newDir;
   }
 
-  void disable() { direction = glm::vec3(0.0f, 1.0f, 0.0f); }
+  void disable() { // direction = glm::vec3(0.0f, 1.0f, 0.0f);
+  }
 
   void useLight(GLuint ambientIntensityLocation, GLuint ambientColorLocation,
                 GLuint diffuseIntensityLocation, GLuint positionLocation,
