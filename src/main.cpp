@@ -99,13 +99,20 @@ void calcAverageNormals(unsigned int *indices, unsigned int indiceCount,
 }
 
 void createTriangle() {
-  unsigned int indices[] = {0, 3, 1, 1, 3, 2, 2, 3, 0, 0, 1, 2};
+  unsigned int indices[] = {0, 9, 3, 4, 10, 6, 7, 11, 1, 2, 5, 8};
 
-  GLfloat vertices[] = {// x     y     z		u     v   nx    ny    nz
-                        -1.0f, -1.0f, -0.6f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-                        0.0f,  -1.0f, 1.0f,  0.5f, 0.0f, 0.0f, 0.0f, 0.0f,
-                        1.0f,  -1.0f, -0.6f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-                        0.0f,  1.0f,  0.0f,  0.5f, 1.0f, 0.0f, 0.0f, 0.0f};
+  GLfloat vertices[] = {
+      // x     y     z		u     v   nx    ny    nz
+      -1.0f, -1.0f, -0.6f, 0.0f,  0.0f, 0.0f,  0.0f,  0.0f,  -1.0f, -1.0f,
+      -0.6f, 0.0f,  0.0f,  0.0f,  0.0f, 0.0f,  -1.0f, -1.0f, -0.6f, 0.0f,
+      0.0f,  0.0f,  0.0f,  0.0f,  0.0f, -1.0f, 1.0f,  0.5f,  0.0f,  0.0f,
+      0.0f,  0.0f,  0.0f,  -1.0f, 1.0f, 0.5f,  0.0f,  0.0f,  0.0f,  0.0f,
+      0.0f,  -1.0f, 1.0f,  0.5f,  0.0f, 0.0f,  0.0f,  0.0f,  1.0f,  -1.0f,
+      -0.6f, 1.0f,  0.0f,  0.0f,  0.0f, 0.0f,  1.0f,  -1.0f, -0.6f, 1.0f,
+      0.0f,  0.0f,  0.0f,  0.0f,  1.0f, -1.0f, -0.6f, 1.0f,  0.0f,  0.0f,
+      0.0f,  0.0f,  0.0f,  1.0f,  0.0f, 0.5f,  1.0f,  0.0f,  0.0f,  0.0f,
+      0.0f,  1.0f,  0.0f,  0.5f,  1.0f, 0.0f,  0.0f,  0.0f,  0.0f,  1.0f,
+      0.0f,  0.5f,  1.0f,  0.0f,  0.0f, 0.0f};
 
   // uj objektum
 
@@ -116,19 +123,108 @@ void createTriangle() {
                           -10.0f, 0.0f, 10.f,  0.0f,  10.0f, 0.0f, -1.0f, 0.0f,
                           10.0f,  0.0f, 10.f,  10.0f, 10.0f, 0.0f, -1.0f, 0.0f};
 
-  calcAverageNormals(indices, 12, vertices, 32, 8, 5);
+  calcAverageNormals(indices, sizeof(indices) / sizeof(unsigned int), vertices,
+                     sizeof(vertices) / sizeof(GLfloat), 8, 5);
 
   meshList.push_back(Mesh());
   meshList.push_back(Mesh());
   meshList.push_back(Mesh());
 
   meshList[0].createMesh(vertices, indices, sizeof(vertices) / sizeof(GLfloat),
-                         sizeof(indices) / sizeof(GLfloat));
+                         sizeof(indices) / sizeof(unsigned int));
   meshList[1].createMesh(vertices, indices, sizeof(vertices) / sizeof(GLfloat),
-                         sizeof(indices) / sizeof(GLfloat));
+                         sizeof(indices) / sizeof(unsigned int));
   meshList[2].createMesh(floorVertices, floorIndices,
                          sizeof(floorVertices) / sizeof(GLfloat),
-                         sizeof(floorIndices) / sizeof(GLfloat));
+                         sizeof(floorIndices) / sizeof(unsigned int));
+#if 0
+  unsigned int lenVertices = sizeof(vertices) / sizeof(GLfloat);
+  for (unsigned i = 0; i < lenVertices; i = i + 8) {
+    printf("v %1.1f %1.1f %1.1f\n", vertices[i], vertices[i + 1],
+           vertices[i + 2]);
+  }
+  for (unsigned i = 6; i < lenVertices; i = i + 8) {
+    printf("vn %1.1f %1.1f %1.1f\n", vertices[i], vertices[i + 1],
+           vertices[i + 2]);
+  }
+  for (unsigned i = 3; i < lenVertices; i = i + 8) {
+    printf("vt %1.1f %1.1f\n", vertices[i], vertices[i + 1]);
+  }
+  unsigned int lenIndices = sizeof(indices) / sizeof(unsigned int);
+  for (unsigned i = 0; i < lenIndices; i = i + 3) {
+    printf("f %d/%d/%d %d/%d/%d %d/%d/%d\n", indices[i], indices[i], indices[i],
+           indices[i + 1], indices[i + 1], indices[i + 1], indices[i + 2],
+           indices[i + 2], indices[i + 2]);
+  }
+#endif
+}
+
+std::vector<float> lineData{};
+
+// draw a line by dynamically storing vertex data
+void draw_line(const glm::vec3 &p1, const glm::vec3 &p2,
+               const glm::vec3 &color) {
+  // point 1
+  lineData.push_back(p1.x);
+  lineData.push_back(p1.y);
+  lineData.push_back(p1.z);
+
+  // color
+  lineData.push_back(color.r);
+  lineData.push_back(color.g);
+  lineData.push_back(color.b);
+
+  // point 2
+  lineData.push_back(p2.x);
+  lineData.push_back(p2.y);
+  lineData.push_back(p2.z);
+
+  // color
+  lineData.push_back(color.r);
+  lineData.push_back(color.g);
+  lineData.push_back(color.b);
+}
+void draw_line_2d(const glm::vec2 &p1, const glm::vec2 &p2,
+                  const glm::vec3 &color) {
+  draw_line(glm::vec3(p1, 0), glm::vec3(p2, 0), color);
+}
+
+void draw_lines_flush() {
+  static unsigned int vao, vbo;
+
+  static bool created = false;
+  if (!created) {
+    created = true;
+
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, lineData.size() * sizeof(float),
+                 lineData.data(), GL_DYNAMIC_DRAW);
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
+                          (void *)0);
+
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
+                          (void *)(3 * sizeof(float)));
+  } else {
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, lineData.size() * sizeof(float),
+                 lineData.data(), GL_DYNAMIC_DRAW);
+  }
+
+  // 6 floats make up a vertex (3 position 3 color)
+  // divide by that to get number of vertices to draw
+  int count = lineData.size() / 6;
+
+  glBindVertexArray(vao);
+  glDrawArrays(GL_LINES, 0, count);
+
+  lineData.clear();
 }
 
 // settings
@@ -268,7 +364,7 @@ int main() {
 
     // light source
     DirectionalLight mainLight =
-        DirectionalLight({1.0f, 1.0f, 1.0f}, 0.1f, 0.2f, {0.0f, -1.0f, 0.0f});
+        DirectionalLight({1.0f, 1.0f, 1.0f}, 0.3f, 0.4f, {0.0f, -1.0f, -1.0f});
 
     PointLight pointLights[MAX_POINT_LIGHTS];
 
@@ -324,8 +420,10 @@ int main() {
     // projectPath is valid from here on out
 
     Model cube;
+    Model pyramid;
     try {
       cube.loadModel(projectPath / std::filesystem::path("cube-tex.obj"));
+      pyramid.loadModel(projectPath / std::filesystem::path("pyramid.obj"));
     } catch (const std::invalid_argument &err) {
       std::cerr << err.what() << std::endl;
     }
@@ -339,6 +437,7 @@ int main() {
 
     // compile shaders
     Shader shader;
+    Shader lineshader;
     // TODO: collect directories in one place
     auto shaderDir = std::filesystem::path("shaders");
     auto vertexShaderFile = std::filesystem::path("vertex_source.glsl.vert");
@@ -346,6 +445,12 @@ int main() {
         std::filesystem::path("fragment_source.glsl.frag");
     if (validateShaderFiles(projectPath, shaderDir, vertexShaderFile,
                             fragmentShaderFile, shader)) {
+      std::cout << "Error occured while validating shader files!\n";
+      return -1;
+    }
+    auto lvf = std::filesystem::path("line.vert");
+    auto lff = std::filesystem::path("line.frag");
+    if (validateShaderFiles(projectPath, shaderDir, lvf, lff, lineshader)) {
       std::cout << "Error occured while validating shader files!\n";
       return -1;
     }
@@ -522,8 +627,18 @@ int main() {
       shader.use();
       shader.useMaterial(shinyMaterial, "material.shininess",
                          "material.specularIntensity");
-      cube.renderModel();
+      brickTexture.useTexture();
+      pyramid.renderModel();
       shader.unuse();
+
+      float length = 100.f;
+      glm::vec3 linefrom = spotLights[0].getPos();
+      glm::vec3 lineto = linefrom + spotLights[0].getDirection() * length;
+      draw_line(linefrom, lineto, {1.f, 0.f, 0.f});
+      lineshader.setMat4fv(view, "view");
+      lineshader.setMat4fv(projection, "projection");
+      lineshader.use();
+      draw_lines_flush();
 
       ms.render(componentRegistry, shader);
 
