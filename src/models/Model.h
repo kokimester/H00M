@@ -1,14 +1,14 @@
 #pragma once
 
-#include <vector>
-#include <string>
-#include <sstream>
 #include <exception>
+#include <sstream>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 #include <assimp/Importer.hpp>
-#include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include <assimp/scene.h>
 
 #include "Mesh.h"
 #include "Texture.h"
@@ -18,26 +18,22 @@
 //		std::invalid_argument <- FAILED TO LOAD MODEL
 //
 //===================
-class Model
-{
+class Model {
 private:
-	std::vector<Mesh*> meshList;
-	std::vector<Texture*> textureList;
-	std::vector<unsigned int> meshToTex;
+  std::vector<Mesh *> meshList;
+  std::vector<Texture *> textureList;
+  std::vector<unsigned int> meshToTex;
+
 public:
-	Model();
-	~Model();
-	
-	void loadModel(const std::string& fileLocation);
-	void renderModel();
-	void clearModel();
+  Model();
+  ~Model();
+
+  void loadModel(const std::string &fileLocation);
+  void renderModel();
+  void clearModel();
 
 private:
-
-	void loadNode(aiNode* node, const aiScene* scene);
-	void loadMesh(aiMesh* mesh, const aiScene* scene);
-	void loadMaterials(const aiScene* scene);
-
-
+  void loadNode(aiNode *node, const aiScene *scene);
+  void loadMesh(aiMesh *mesh, const aiScene *scene);
+  void loadMaterials(const aiScene *scene);
 };
-
