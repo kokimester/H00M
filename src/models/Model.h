@@ -28,8 +28,8 @@ public:
   Model();
   ~Model();
 
-  void loadModel(const std::string &fileLocation);
-  void renderModel();
+  void loadModel(const std::string &fileLocation, bool isSmoothShaded = true);
+  void renderModel(bool useTexture = true);
   void clearModel();
 
 private:

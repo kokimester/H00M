@@ -143,6 +143,8 @@ void createTriangle() {
     printf("v %1.1f %1.1f %1.1f\n", vertices[i], vertices[i + 1],
            vertices[i + 2]);
   }
+#endif
+#if 0
   for (unsigned i = 6; i < lenVertices; i = i + 8) {
     printf("vn %1.1f %1.1f %1.1f\n", vertices[i], vertices[i + 1],
            vertices[i + 2]);
@@ -152,10 +154,20 @@ void createTriangle() {
   }
   unsigned int lenIndices = sizeof(indices) / sizeof(unsigned int);
   for (unsigned i = 0; i < lenIndices; i = i + 3) {
-    printf("f %d/%d/%d %d/%d/%d %d/%d/%d\n", indices[i], indices[i], indices[i],
-           indices[i + 1], indices[i + 1], indices[i + 1], indices[i + 2],
-           indices[i + 2], indices[i + 2]);
+    printf("f %d/%d/%d %d/%d/%d %d/%d/%d\n", indices[i] + 1, indices[i] + 1,
+           indices[i] + 1, indices[i + 1] + 1, indices[i + 1] + 1,
+           indices[i + 1] + 1, indices[i + 2] + 1, indices[i + 2] + 1,
+           indices[i + 2] + 1);
   }
+#else
+#if 0
+  unsigned int lenIndices = sizeof(indices) / sizeof(unsigned int);
+  for (unsigned i = 0; i < lenIndices; i = i + 3) {
+    printf("f %d/%d/ %d/%d/ %d/%d/\n", indices[i + 2] + 1, indices[i + 2] + 1,
+           indices[i + 1] + 1, indices[i + 1] + 1, indices[i] + 1,
+           indices[i] + 1);
+  }
+#endif
 #endif
 }
 
@@ -277,19 +289,24 @@ entity create_entity() {
 }
 
 struct transform_component {
-  glm::vec3 pos, vel;
+  glm::vec3 pos{0.f};
+  glm::vec3 vel{0.f};
+  glm::vec3 rot{0.f};
+  glm::vec3 scale{1.f};
+  GLfloat rotationInDegrees = 0.f;
+  GLfloat rotationvel = 0.f;
 };
 
 struct model_component {
   glm::mat4 modelMat{1.f};
+  glm::mat4 modelDefaultOrientationRotation{1.f};
   Model &model;
-  Material material;
-  model_component(Model &model) : model{model} {}
-  model_component(const model_component &theOther) : model{theOther.model} {}
-  model_component &operator=(const model_component theOther) {
-    model = theOther.model;
-    return *this;
-  }
+  Material &material;
+  Texture &texture;
+  model_component(Model &model, Material &material, Texture &texture,
+                  glm::mat4 defaultRotation = {1.f})
+      : modelDefaultOrientationRotation{defaultRotation}, model{model},
+        material{material}, texture{texture} {}
 };
 
 struct registry {
@@ -305,7 +322,17 @@ struct model_system {
         glm::mat4 &modelMatrix = reg.models.at(e).modelMat;
         modelMatrix = glm::mat4{1.f};
         auto &modelPosition = reg.transforms.at(e).pos;
+        auto &scale = reg.transforms.at(e).scale;
+        auto &rotationInDegrees = reg.transforms.at(e).rotationInDegrees;
+        auto &rotation = reg.transforms.at(e).rot;
+        auto &defaultrotation =
+            reg.models.at(e).modelDefaultOrientationRotation;
         modelMatrix = glm::translate(modelMatrix, modelPosition);
+        modelMatrix = glm::scale(modelMatrix, scale);
+        // rotating the model by the loadoffset
+        modelMatrix = modelMatrix * defaultrotation;
+        modelMatrix =
+            glm::rotate(modelMatrix, glm::radians(rotationInDegrees), rotation);
       }
     }
   }
@@ -315,11 +342,13 @@ struct model_system {
         auto &modelMatrix = reg.models.at(e).modelMat;
         auto &model = reg.models.at(e).model;
         auto &material = reg.models.at(e).material;
+        auto &texture = reg.models.at(e).texture;
         shader.setMat4fv(modelMatrix, "model");
         shader.use();
+        texture.useTexture();
         shader.useMaterial(material, "material.shininess",
                            "material.specularIntensity");
-        model.renderModel();
+        model.renderModel(false);
         shader.unuse();
       }
     }
@@ -331,6 +360,8 @@ struct transform_system {
     for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
       if (reg.transforms.contains(e)) {
         reg.transforms[e].pos += reg.transforms[e].vel * dt;
+        reg.transforms[e].rotationInDegrees +=
+            reg.transforms[e].rotationvel * dt;
       }
     }
   }
@@ -421,9 +452,14 @@ int main() {
 
     Model cube;
     Model pyramid;
+    Model teapot;
+    Model sphere;
     try {
       cube.loadModel(projectPath / std::filesystem::path("cube-tex.obj"));
-      pyramid.loadModel(projectPath / std::filesystem::path("pyramid.obj"));
+      pyramid.loadModel(projectPath / std::filesystem::path("pyramid2.obj"),
+                        false);
+      teapot.loadModel(projectPath / std::filesystem::path("teapot.obj"));
+      sphere.loadModel(projectPath / std::filesystem::path("sphere.obj"));
     } catch (const std::invalid_argument &err) {
       std::cerr << err.what() << std::endl;
     }
@@ -499,6 +535,20 @@ int main() {
 
     registry componentRegistry;
 
+    // TODO: create component addition one-by-one instead
+    auto addEntity = [&](Model &model, Material &mat, Texture &texture,
+                         transform_component tc = {},
+                         glm::mat4 defaultRotation = {1.f}) {
+      if (MAX_ENTITY >= 20000) {
+        std::cout << "Entity cap reached" << std::endl;
+        return;
+      }
+      entity cubeEntity = create_entity();
+      componentRegistry.models.emplace(
+          cubeEntity, model_component{model, mat, texture, defaultRotation});
+      componentRegistry.transforms[cubeEntity] = tc;
+    };
+
     auto addEntities = [&](unsigned int count = 100) {
       if (MAX_ENTITY >= 20000) {
         std::cout << "Entity cap reached" << std::endl;
@@ -506,12 +556,51 @@ int main() {
       }
       for (unsigned int i = 0; i < count; ++i) {
         entity cubeEntity = create_entity();
-        componentRegistry.models.emplace(cubeEntity, model_component{cube});
-        componentRegistry.transforms[cubeEntity] =
-            transform_component{{0.f - rand() % 40, 10.f, -3.f - rand() % 40},
-                                {0.f, -0.1f - (float)(rand() % 10) / 10, 0.0f}};
+        componentRegistry.models.emplace(
+            cubeEntity, model_component{cube, shinyMaterial, brickTexture});
+        componentRegistry.transforms[cubeEntity] = transform_component{
+            .pos = {0.f - rand() % 40, 10.f, -3.f - rand() % 40},
+            .vel = {0.f, -0.1f - (float)(rand() % 10) / 10, 0.0f}};
       }
     };
+
+    addEntity(sphere, shinyMaterial, brickTexture,
+              transform_component{.pos = {-3.0f, -1.0f, -1.0f},
+                                  .vel = glm::vec3{0.f},
+                                  .rot = {0.0f, 1.0f, 0.0f},
+                                  .scale = glm::vec3{1.f},
+                                  .rotationInDegrees = 0.f,
+                                  .rotationvel = 0.f});
+
+    addEntity(cube, shinyMaterial, brickTexture,
+              transform_component{.pos = {-2.0f, 1.0f, -3.0f},
+                                  .vel = glm::vec3{0.f},
+                                  .rot = {0.0f, 1.0f, 0.0f},
+                                  .scale = glm::vec3{1.f},
+                                  .rotationInDegrees = 0.f,
+                                  .rotationvel = 0.f});
+
+    {
+      /* glm::mat4 pyramidRotationOffset{1.f}; */
+      /* pyramidRotationOffset = */
+      /*     glm::rotate(pyramidRotationOffset, glm::radians(-90.f), */
+      /*                 glm::vec3{1.0f, 0.0f, 0.0f}); */
+      addEntity(pyramid, shinyMaterial, brickTexture,
+                transform_component{.pos = {0.0f, -1.0f, -3.0f},
+                                    .vel = glm::vec3{0.f},
+                                    .rot = {0.0f, 1.0f, 0.0f},
+                                    .scale = glm::vec3{1.f},
+                                    .rotationInDegrees = 0.f,
+                                    .rotationvel = 10.f});
+
+      addEntity(pyramid, dullMaterial, dirtTexture,
+                transform_component{.pos = {0.0f, 1.0f, -3.0f},
+                                    .vel = glm::vec3{0.f},
+                                    .rot = {1.0f, 0.0f, 0.0f},
+                                    .scale = glm::vec3{0.5f},
+                                    .rotationInDegrees = 0.f,
+                                    .rotationvel = 0.f});
+    }
 
     while (!window.getShouldClose()) // returns true if window is closed
     {
@@ -544,65 +633,23 @@ int main() {
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       // render stuff
 
+      //----Camera----
       glm::mat4 view = camera.calculateViewMatrix();
       // berakjuk a kamera helyet igy igazodik a visszaverodes
       shader.setVec3f(camera.getCameraPosition(), "eyePosition");
       shader.setMat4fv(view, "view");
       shader.setMat4fv(projection, "projection");
+      //----Camera----
 
-      glm::mat4 model(1.f);
-
-      model = glm::translate(model, glm::vec3(0.0f, -1.0f, -3.0f));
-      // model = glm::scale(model, glm::vec3(0.4f, 0.4f, 0.4f));
-      model = glm::rotate(model, glm::radians(triRotation),
-                          glm::vec3(0.0f, 1.0f, 0.0f));
-      triRotation += 10.f * deltaTime;
-      shader.setMat4fv(model, "model");
-
-      // hasznaljuk a fenyt
-      //==================================
-
+      //----Lighting data----
       shader.setDirectionalLight(mainLight);
       shader.setPointLights(pointLights, pointLightCount);
       shader.setSpotLights(spotLights, spotLightCount);
+      //----Lighting data----
 
-      //==================================
-
-      // rajzolo függvény, használjuk a shaderprogramot:
-      shader.use();
-
-      // beallitjuk a texturet
-      brickTexture.useTexture();
-      shader.useMaterial(shinyMaterial, "material.shininess",
-                         "material.specularIntensity");
-
-      // letrehozzuk a trianglet
-      meshList[0].renderMesh();
-
-      shader.unuse();
-
-      // magasabbra helyezunk megegy tetraedert
-      model = glm::mat4(1.f);
-      model = glm::translate(model, glm::vec3(0.0f, 1.0f, -3.0f));
-      model = glm::scale(model, glm::vec3(0.4f, 0.4f, 0.4f));
-      shader.setMat4fv(model, "model");
-
-      shader.use();
-
-      // beallitjuk a texturet
-      dirtTexture.useTexture();
-      shader.useMaterial(dullMaterial, "material.shininess",
-                         "material.specularIntensity");
-
-      // letrehozzuk a trianglet
-      meshList[1].renderMesh();
-
-      // end of render stuff, bufferswap, and event check
-      shader.unuse();
-
-      // bealltijuk a foldet
-
-      model = glm::mat4(1.f);
+      // ----Ground----
+      // render the ground (leaving it here for now bcs shadowmapping)
+      glm::mat4 model = glm::mat4(1.f);
       model = glm::translate(model, glm::vec3(0.0f, -2.0005f, 0.0f));
       shader.setMat4fv(model, "model");
       shader.use();
@@ -613,23 +660,7 @@ int main() {
       // letrehozzuk a floort
       meshList[2].renderMesh();
       shader.unuse();
-
-      // cube
-      model = glm::mat4(1.f);
-      auto cubePos = glm::vec3(-2.0f, 1.0f, -3.0f);
-      auto cubeScale = glm::vec3(0.5f);
-      auto cubeRotation = glm::radians(-90.0f);
-      auto cubeRotationVector = glm::vec3(1.0f, 0.0f, 0.0f);
-      model = glm::translate(model, cubePos);
-      model = glm::scale(model, cubeScale);
-      model = glm::rotate(model, cubeRotation, cubeRotationVector);
-      shader.setMat4fv(model, "model");
-      shader.use();
-      shader.useMaterial(shinyMaterial, "material.shininess",
-                         "material.specularIntensity");
-      brickTexture.useTexture();
-      pyramid.renderModel();
-      shader.unuse();
+      // ----Ground----
 
       float length = 100.f;
       glm::vec3 linefrom = spotLights[0].getPos();
@@ -640,7 +671,9 @@ int main() {
       lineshader.use();
       draw_lines_flush();
 
+      // render all entities
       ms.render(componentRegistry, shader);
+      // render all entities
 
       auto keys = window.getKeys();
       if (keys[GLFW_KEY_E]) {
@@ -648,6 +681,7 @@ int main() {
         keys[GLFW_KEY_E] = false;
       }
 
+      // handle performance debug output
       {
         if (now - lastTimeTextWasRendered > 0.1f) {
           lastTimeTextWasRendered = now;
