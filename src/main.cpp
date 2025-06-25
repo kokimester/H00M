@@ -27,6 +27,7 @@
 #include "Camera.h"
 #include "CommonValues.h"
 #include "DirectionalLight.h"
+#include "Line.h"
 #include "Material.h"
 #include "Mesh.h"
 #include "Model.h"
@@ -43,201 +44,9 @@
 GLfloat deltaTime = 0.0f;
 GLfloat lastTime = 0.0f;
 GLfloat lastTimeTextWasRendered = 0.0f;
+constexpr GLfloat textTickRate = 10.0f;
 std::string timeStr, FPSStr;
 std::string cameraLocStr, cameraFacingStr, entityCountStr;
-
-std::vector<Mesh> meshList;
-
-bool direction = true;
-float triOffset = 0.0f;
-float triMaxOffset = 0.8f;
-float triIncrement = 0.0005f;
-float triRotIncrement = 0.02f;
-float triRotation = 0.0f;
-
-void calcAverageNormals(unsigned int *indices, unsigned int indiceCount,
-                        GLfloat *vertices, unsigned int verticeCount,
-                        unsigned int vLength, unsigned int normalOffset) {
-  for (unsigned int i = 0; i < indiceCount; i += 3) {
-    unsigned int in0 = indices[i] * vLength;
-    unsigned int in1 = indices[i + 1] * vLength;
-    unsigned int in2 = indices[i + 2] * vLength;
-    unsigned int normalIndex0 = indices[i] * vLength + normalOffset;
-    unsigned int normalIndex1 = indices[i + 1] * vLength + normalOffset;
-    unsigned int normalIndex2 = indices[i + 2] * vLength + normalOffset;
-    glm::vec3 v1(vertices[in1] - vertices[in0],
-                 vertices[in1 + 1] - vertices[in0 + 1],
-                 vertices[in1 + 2] - vertices[in0 + 2]);
-    glm::vec3 v2(vertices[in2] - vertices[in0],
-                 vertices[in2 + 1] - vertices[in0 + 1],
-                 vertices[in2 + 2] - vertices[in0 + 2]);
-
-    glm::vec3 normal = glm::cross(v1, v2);
-    normal = glm::normalize(normal);
-
-    vertices[normalIndex0] += normal.x;
-    vertices[normalIndex0 + 1] += normal.y;
-    vertices[normalIndex0 + 2] += normal.z;
-
-    vertices[normalIndex1] += normal.x;
-    vertices[normalIndex1 + 1] += normal.y;
-    vertices[normalIndex1 + 2] += normal.z;
-
-    vertices[normalIndex2] += normal.x;
-    vertices[normalIndex2 + 1] += normal.y;
-    vertices[normalIndex2 + 2] += normal.z;
-  }
-  for (unsigned int i = 0; i < verticeCount / vLength; i++) {
-    unsigned int nOffset = i * vLength + normalOffset;
-    glm::vec3 vec(vertices[nOffset], vertices[nOffset + 1],
-                  vertices[nOffset + 2]);
-    vec = glm::normalize(vec);
-    vertices[nOffset] = vec.x;
-    vertices[nOffset + 1] = vec.y;
-    vertices[nOffset + 2] = vec.z;
-  }
-}
-
-void createTriangle() {
-  unsigned int indices[] = {0, 9, 3, 4, 10, 6, 7, 11, 1, 2, 5, 8};
-
-  GLfloat vertices[] = {
-      // x     y     z		u     v   nx    ny    nz
-      -1.0f, -1.0f, -0.6f, 0.0f,  0.0f, 0.0f,  0.0f,  0.0f,  -1.0f, -1.0f,
-      -0.6f, 0.0f,  0.0f,  0.0f,  0.0f, 0.0f,  -1.0f, -1.0f, -0.6f, 0.0f,
-      0.0f,  0.0f,  0.0f,  0.0f,  0.0f, -1.0f, 1.0f,  0.5f,  0.0f,  0.0f,
-      0.0f,  0.0f,  0.0f,  -1.0f, 1.0f, 0.5f,  0.0f,  0.0f,  0.0f,  0.0f,
-      0.0f,  -1.0f, 1.0f,  0.5f,  0.0f, 0.0f,  0.0f,  0.0f,  1.0f,  -1.0f,
-      -0.6f, 1.0f,  0.0f,  0.0f,  0.0f, 0.0f,  1.0f,  -1.0f, -0.6f, 1.0f,
-      0.0f,  0.0f,  0.0f,  0.0f,  1.0f, -1.0f, -0.6f, 1.0f,  0.0f,  0.0f,
-      0.0f,  0.0f,  0.0f,  1.0f,  0.0f, 0.5f,  1.0f,  0.0f,  0.0f,  0.0f,
-      0.0f,  1.0f,  0.0f,  0.5f,  1.0f, 0.0f,  0.0f,  0.0f,  0.0f,  1.0f,
-      0.0f,  0.5f,  1.0f,  0.0f,  0.0f, 0.0f};
-
-  // uj objektum
-
-  unsigned int floorIndices[]{0, 1, 2, 1, 2, 3};
-
-  GLfloat floorVertices[]{-10.0f, 0.0f, -10.f, 0.0f,  0.0f,  0.0f, -1.0f, 0.0f,
-                          10.0f,  0.0f, -10.f, 10.0f, 0.0f,  0.0f, -1.0f, 0.0f,
-                          -10.0f, 0.0f, 10.f,  0.0f,  10.0f, 0.0f, -1.0f, 0.0f,
-                          10.0f,  0.0f, 10.f,  10.0f, 10.0f, 0.0f, -1.0f, 0.0f};
-
-  calcAverageNormals(indices, sizeof(indices) / sizeof(unsigned int), vertices,
-                     sizeof(vertices) / sizeof(GLfloat), 8, 5);
-
-  meshList.push_back(Mesh());
-  meshList.push_back(Mesh());
-  meshList.push_back(Mesh());
-
-  meshList[0].createMesh(vertices, indices, sizeof(vertices) / sizeof(GLfloat),
-                         sizeof(indices) / sizeof(unsigned int));
-  meshList[1].createMesh(vertices, indices, sizeof(vertices) / sizeof(GLfloat),
-                         sizeof(indices) / sizeof(unsigned int));
-  meshList[2].createMesh(floorVertices, floorIndices,
-                         sizeof(floorVertices) / sizeof(GLfloat),
-                         sizeof(floorIndices) / sizeof(unsigned int));
-#if 0
-  unsigned int lenVertices = sizeof(vertices) / sizeof(GLfloat);
-  for (unsigned i = 0; i < lenVertices; i = i + 8) {
-    printf("v %1.1f %1.1f %1.1f\n", vertices[i], vertices[i + 1],
-           vertices[i + 2]);
-  }
-#endif
-#if 0
-  for (unsigned i = 6; i < lenVertices; i = i + 8) {
-    printf("vn %1.1f %1.1f %1.1f\n", vertices[i], vertices[i + 1],
-           vertices[i + 2]);
-  }
-  for (unsigned i = 3; i < lenVertices; i = i + 8) {
-    printf("vt %1.1f %1.1f\n", vertices[i], vertices[i + 1]);
-  }
-  unsigned int lenIndices = sizeof(indices) / sizeof(unsigned int);
-  for (unsigned i = 0; i < lenIndices; i = i + 3) {
-    printf("f %d/%d/%d %d/%d/%d %d/%d/%d\n", indices[i] + 1, indices[i] + 1,
-           indices[i] + 1, indices[i + 1] + 1, indices[i + 1] + 1,
-           indices[i + 1] + 1, indices[i + 2] + 1, indices[i + 2] + 1,
-           indices[i + 2] + 1);
-  }
-#else
-#if 0
-  unsigned int lenIndices = sizeof(indices) / sizeof(unsigned int);
-  for (unsigned i = 0; i < lenIndices; i = i + 3) {
-    printf("f %d/%d/ %d/%d/ %d/%d/\n", indices[i + 2] + 1, indices[i + 2] + 1,
-           indices[i + 1] + 1, indices[i + 1] + 1, indices[i] + 1,
-           indices[i] + 1);
-  }
-#endif
-#endif
-}
-
-std::vector<float> lineData{};
-
-// draw a line by dynamically storing vertex data
-void draw_line(const glm::vec3 &p1, const glm::vec3 &p2,
-               const glm::vec3 &color) {
-  // point 1
-  lineData.push_back(p1.x);
-  lineData.push_back(p1.y);
-  lineData.push_back(p1.z);
-
-  // color
-  lineData.push_back(color.r);
-  lineData.push_back(color.g);
-  lineData.push_back(color.b);
-
-  // point 2
-  lineData.push_back(p2.x);
-  lineData.push_back(p2.y);
-  lineData.push_back(p2.z);
-
-  // color
-  lineData.push_back(color.r);
-  lineData.push_back(color.g);
-  lineData.push_back(color.b);
-}
-void draw_line_2d(const glm::vec2 &p1, const glm::vec2 &p2,
-                  const glm::vec3 &color) {
-  draw_line(glm::vec3(p1, 0), glm::vec3(p2, 0), color);
-}
-
-void draw_lines_flush() {
-  static unsigned int vao, vbo;
-
-  static bool created = false;
-  if (!created) {
-    created = true;
-
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-
-    glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, lineData.size() * sizeof(float),
-                 lineData.data(), GL_DYNAMIC_DRAW);
-
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
-                          (void *)0);
-
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
-                          (void *)(3 * sizeof(float)));
-  } else {
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, lineData.size() * sizeof(float),
-                 lineData.data(), GL_DYNAMIC_DRAW);
-  }
-
-  // 6 floats make up a vertex (3 position 3 color)
-  // divide by that to get number of vertices to draw
-  int count = lineData.size() / 6;
-
-  glBindVertexArray(vao);
-  glDrawArrays(GL_LINES, 0, count);
-
-  lineData.clear();
-}
 
 // settings
 const unsigned int SCR_WIDTH = 1366;
@@ -372,10 +181,6 @@ int main() {
     Window window = Window(SCR_WIDTH, SCR_HEIGHT, GLFW_FALSE);
     window.Initialise();
 
-    // create triangle
-    meshList.reserve(3);
-    createTriangle();
-
     /* glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, 1); */
     /* glfwSetFramebufferSizeCallback(window, framebuffer_size_callback); */
 
@@ -473,7 +278,8 @@ int main() {
 
     // compile shaders
     Shader shader;
-    Shader lineshader;
+    Shader line_shader;
+    Shader shadow_shader;
     // TODO: collect directories in one place
     auto shaderDir = std::filesystem::path("shaders");
     auto vertexShaderFile = std::filesystem::path("vertex_source.glsl.vert");
@@ -486,8 +292,15 @@ int main() {
     }
     auto lvf = std::filesystem::path("line.vert");
     auto lff = std::filesystem::path("line.frag");
-    if (validateShaderFiles(projectPath, shaderDir, lvf, lff, lineshader)) {
+    if (validateShaderFiles(projectPath, shaderDir, lvf, lff, line_shader)) {
       std::cout << "Error occured while validating shader files!\n";
+      return -1;
+    }
+    auto shadowVertFile = std::filesystem::path("shadow.vert");
+    auto shadowFragFile = std::filesystem::path("shadow.frag");
+    if (validateShaderFiles(projectPath, shaderDir, shadowVertFile,
+                            shadowFragFile, shadow_shader)) {
+      std::cout << "Error occured while validating shadow shader files!\n";
       return -1;
     }
 
@@ -555,16 +368,18 @@ int main() {
         return;
       }
       for (unsigned int i = 0; i < count; ++i) {
-        entity cubeEntity = create_entity();
-        componentRegistry.models.emplace(
-            cubeEntity, model_component{cube, shinyMaterial, brickTexture});
-        componentRegistry.transforms[cubeEntity] = transform_component{
-            .pos = {0.f - rand() % 40, 10.f, -3.f - rand() % 40},
-            .vel = {0.f, -0.1f - (float)(rand() % 10) / 10, 0.0f}};
+        addEntity(cube, dullMaterial, brickTexture,
+                  transform_component{
+                      .pos = {(rand() % 40) - 20, 10.0f, (rand() % 40) - 20},
+                      .vel = glm::vec3{0.f},
+                      .rot = {0.0f, 1.0f, 0.0f},
+                      .scale = glm::vec3{1.f},
+                      .rotationInDegrees = 0.f,
+                      .rotationvel = 0.f});
       }
     };
 
-    addEntity(sphere, shinyMaterial, brickTexture,
+    addEntity(sphere, dullMaterial, brickTexture,
               transform_component{.pos = {-3.0f, -1.0f, -1.0f},
                                   .vel = glm::vec3{0.f},
                                   .rot = {0.0f, 1.0f, 0.0f},
@@ -572,7 +387,7 @@ int main() {
                                   .rotationInDegrees = 0.f,
                                   .rotationvel = 0.f});
 
-    addEntity(cube, shinyMaterial, brickTexture,
+    addEntity(cube, dullMaterial, brickTexture,
               transform_component{.pos = {-2.0f, 1.0f, -3.0f},
                                   .vel = glm::vec3{0.f},
                                   .rot = {0.0f, 1.0f, 0.0f},
@@ -581,10 +396,6 @@ int main() {
                                   .rotationvel = 0.f});
 
     {
-      /* glm::mat4 pyramidRotationOffset{1.f}; */
-      /* pyramidRotationOffset = */
-      /*     glm::rotate(pyramidRotationOffset, glm::radians(-90.f), */
-      /*                 glm::vec3{1.0f, 0.0f, 0.0f}); */
       addEntity(pyramid, shinyMaterial, brickTexture,
                 transform_component{.pos = {0.0f, -1.0f, -3.0f},
                                     .vel = glm::vec3{0.f},
@@ -647,33 +458,42 @@ int main() {
       shader.setSpotLights(spotLights, spotLightCount);
       //----Lighting data----
 
-      // ----Ground----
-      // render the ground (leaving it here for now bcs shadowmapping)
-      glm::mat4 model = glm::mat4(1.f);
-      model = glm::translate(model, glm::vec3(0.0f, -2.0005f, 0.0f));
-      shader.setMat4fv(model, "model");
-      shader.use();
-      // beallitjuk a texturet
-      dirtTexture.useTexture();
-      shader.useMaterial(dullMaterial, "material.shininess",
-                         "material.specularIntensity");
-      // letrehozzuk a floort
-      meshList[2].renderMesh();
-      shader.unuse();
-      // ----Ground----
+      // ----Shadow pass-----
+      {
+      }
+      // ----Shadow pass-----
 
-      float length = 100.f;
-      glm::vec3 linefrom = spotLights[0].getPos();
-      glm::vec3 lineto = linefrom + spotLights[0].getDirection() * length;
-      draw_line(linefrom, lineto, {1.f, 0.f, 0.f});
-      lineshader.setMat4fv(view, "view");
-      lineshader.setMat4fv(projection, "projection");
-      lineshader.use();
-      draw_lines_flush();
+      // ----Lighting pass-----
+      {
+        // ----Ground----
+        // render the ground (leaving it here for now bcs shadowmapping)
+        glm::mat4 model = glm::mat4(1.f);
+        model = glm::translate(model, glm::vec3(-10.0f, -2.0005f, -10.0f));
+        model = glm::scale(model, glm::vec3(20.f, 0.01f, 20.f));
+        shader.setMat4fv(model, "model");
+        shader.use();
+        // beallitjuk a texturet
+        dirtTexture.useTexture();
+        shader.useMaterial(dullMaterial, "material.shininess",
+                           "material.specularIntensity");
+        // letrehozzuk a floort
+        cube.renderModel(false);
+        shader.unuse();
+        // ----Ground----
 
-      // render all entities
-      ms.render(componentRegistry, shader);
-      // render all entities
+        static Line line;
+        line.updateWithDirection(spotLights[0].getPos(),
+                                 spotLights[0].getDirection(), {1.f, 0.f, 0.f});
+        line_shader.setMat4fv(view, "view");
+        line_shader.setMat4fv(projection, "projection");
+        line_shader.use();
+        line.render();
+
+        // render all entities
+        ms.render(componentRegistry, shader);
+        // render all entities
+      }
+      // ----Lighting pass-----
 
       auto keys = window.getKeys();
       if (keys[GLFW_KEY_E]) {
@@ -683,7 +503,7 @@ int main() {
 
       // handle performance debug output
       {
-        if (now - lastTimeTextWasRendered > 0.1f) {
+        if (now - lastTimeTextWasRendered > 1 / textTickRate) {
           lastTimeTextWasRendered = now;
           timeStr = "Elapsed time: " +
                     std::to_string(static_cast<unsigned int>(
