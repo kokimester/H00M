@@ -154,7 +154,7 @@ struct model_system {
         auto &texture = reg.models.at(e).texture;
         shader.setMat4fv(modelMatrix, "model");
         shader.use();
-        texture.useTexture();
+        // texture.useTexture();
         shader.useMaterial(material, "material.shininess",
                            "material.specularIntensity");
         model.renderModel(false);
@@ -296,8 +296,8 @@ int main() {
       std::cout << "Error occured while validating shader files!\n";
       return -1;
     }
-    auto shadowVertFile = std::filesystem::path("shadow.vert");
-    auto shadowFragFile = std::filesystem::path("shadow.frag");
+    auto shadowVertFile = std::filesystem::path("depthShader.vert");
+    auto shadowFragFile = std::filesystem::path("depthShader.frag");
     if (validateShaderFiles(projectPath, shaderDir, shadowVertFile,
                             shadowFragFile, shadow_shader)) {
       std::cout << "Error occured while validating shadow shader files!\n";
@@ -380,7 +380,7 @@ int main() {
     };
 
     addEntity(sphere, dullMaterial, brickTexture,
-              transform_component{.pos = {-3.0f, -1.0f, -1.0f},
+              transform_component{.pos = {-3.0f, 1.0f, -1.0f},
                                   .vel = glm::vec3{0.f},
                                   .rot = {0.0f, 1.0f, 0.0f},
                                   .scale = glm::vec3{1.f},
@@ -412,6 +412,28 @@ int main() {
                                     .rotationInDegrees = 0.f,
                                     .rotationvel = 0.f});
     }
+    unsigned int depthMapFBO;
+    glGenFramebuffers(1, &depthMapFBO);
+    const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
+
+    unsigned int depthMap;
+    glGenTextures(1, &depthMap);
+    glBindTexture(GL_TEXTURE_2D, depthMap);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH,
+                 SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
+                           depthMap, 0);
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    shadow_shader.set1i(0, "depthMap");
 
     while (!window.getShouldClose()) // returns true if window is closed
     {
@@ -459,7 +481,39 @@ int main() {
       //----Lighting data----
 
       // ----Shadow pass-----
+      float near_plane = 1.0f, far_plane = 7.5f;
       {
+        glm::mat4 lightProjection =
+            glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+        glm::mat4 lightView = glm::lookAt(glm::vec3(0.0f, 4.0f, 4.0f),
+                                          glm::vec3(0.0f, 0.0f, 0.0f),
+                                          glm::vec3(0.0f, 1.0f, 0.0f));
+        lightView = glm::lookAt(spotLights[0].getPos(), glm::vec3(0),
+                                glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+        // 1. first render to depth map
+        shadow_shader.use();
+        shadow_shader.setMat4fv(lightSpaceMatrix, "lightSpaceMatrix");
+
+        glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+        glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+        glClear(GL_DEPTH_BUFFER_BIT);
+        brickTexture.useTexture();
+        ms.render(componentRegistry, shadow_shader);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+      }
+      {
+        // 2. then render scene as normal with shadow mapping (using depth map)
+        glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        shader.set1f(near_plane, "near_plane");
+        shader.set1f(far_plane, "far_plane");
+        // ConfigureShaderAndMatrices();
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, depthMap);
+        // RenderScene();
+        ms.render(componentRegistry, shader);
       }
       // ----Shadow pass-----
 
@@ -468,12 +522,14 @@ int main() {
         // ----Ground----
         // render the ground (leaving it here for now bcs shadowmapping)
         glm::mat4 model = glm::mat4(1.f);
-        model = glm::translate(model, glm::vec3(-10.0f, -2.0005f, -10.0f));
+        model = glm::translate(model, glm::vec3(0.0f, -2.0005f, 0.0f));
         model = glm::scale(model, glm::vec3(20.f, 0.01f, 20.f));
+        model =
+            glm::rotate(model, glm::radians(180.f), glm::vec3(1.f, 0.f, 0.f));
         shader.setMat4fv(model, "model");
         shader.use();
         // beallitjuk a texturet
-        dirtTexture.useTexture();
+        // dirtTexture.useTexture();
         shader.useMaterial(dullMaterial, "material.shininess",
                            "material.specularIntensity");
         // letrehozzuk a floort
@@ -490,7 +546,7 @@ int main() {
         line.render();
 
         // render all entities
-        ms.render(componentRegistry, shader);
+        /* ms.render(componentRegistry, shader); */
         // render all entities
       }
       // ----Lighting pass-----

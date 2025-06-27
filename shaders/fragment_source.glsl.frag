@@ -8,6 +8,10 @@ in vec3 FragPos;
 
 out vec4 color;
 
+uniform sampler2D depthMap;
+uniform float near_plane;
+uniform float far_plane;
+
 const int MAX_POINT_LIGHTS = 3;
 const int MAX_SPOT_LIGHTS = 3;
 
@@ -148,6 +152,12 @@ vec4 CalcPointLights()
 	 }
 	return totalColor;
 }
+// required when using a perspective projection matrix
+float LinearizeDepth(float depth)
+{
+    float z = depth * 2.0 - 1.0; // Back to NDC
+    return (2.0 * near_plane * far_plane) / (far_plane + near_plane - z * (far_plane - near_plane));
+}
 
 void main()
 {
@@ -157,7 +167,9 @@ void main()
     // 10% ambient light in case there is not enough light
     //finalColor += vec4(0.1, 0.1, 0.1, 0.0);
 
-	color = texture(theTexture,texCoord0) * finalColor;
+    // FragColor = vec4(vec3(LinearizeDepth(depthValue) / far_plane), 1.0); // perspective
+    float depthValue = texture(theTexture,texCoord0).r;
+	color = vec4(vec3(depthValue),1.0f) * finalColor;
     //uncomment to check normals
     // color = vec4(normalize(Normal) * 0.5 + 0.5, 1.0);
 

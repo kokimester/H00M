@@ -93,7 +93,7 @@ void Model::loadMesh(aiMesh *mesh, const aiScene *scene) {
   avgz /= mesh->mNumVertices;
 
   // optional: center vertices around average of all vertices
-#if 0
+#if 1
   constexpr size_t sizeOfVertexData = 8;
   for (size_t i = 0; i < vertices.size(); i += sizeOfVertexData) {
     vertices[i] -= avgx;
