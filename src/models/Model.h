@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <filesystem>
 
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
@@ -28,7 +29,7 @@ public:
   Model();
   ~Model();
 
-  void loadModel(const std::string &fileLocation, bool isSmoothShaded = true);
+  void loadModel(const std::filesystem::path &fileLocation, bool isSmoothShaded = true);
   void renderModel(bool useTexture = true);
   void clearModel();
 

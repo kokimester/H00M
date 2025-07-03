@@ -4,6 +4,7 @@
 class Spotlight : public PointLight {
 private:
   glm::vec3 direction;
+  glm::vec3 right;
 
   GLfloat edge, procEdge; // egy szog ami megmondja meddig tart a feny
   GLfloat innerCutoff, outerCutoff;
@@ -16,15 +17,17 @@ public:
             GLfloat pExp, GLfloat pEdge, GLfloat pInner, GLfloat pOuter);
 
   glm::vec3 getDirection() const { return direction; }
+  glm::vec3 getRight() const {return right;}
   GLfloat getEdge() const { return edge; }
   GLfloat getProcEdge() const { return procEdge; }
   GLfloat getInnerCutoff() const { return innerCutoff; }
   GLfloat getOuterCutoff() const { return outerCutoff; }
 
   void update(glm::vec3 newPos, glm::vec3 newDir,
-              [[maybe_unused]] glm::vec3 rightDir) {
+              glm::vec3 rightDir) {
     PointLight::position = newPos + glm::vec3(0.0f, -0.3f, 0.0f);
     direction = newDir;
+    right = rightDir;
   }
 
   void disable() { // direction = glm::vec3(0.0f, 1.0f, 0.0f);

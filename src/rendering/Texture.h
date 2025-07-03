@@ -24,6 +24,8 @@ public:
   Texture(const char *fileLoc);
   ~Texture();
 
+  unsigned int getID() const {return textureID;}
+
   bool loadTexture();
   bool loadTextureAlpha();
 

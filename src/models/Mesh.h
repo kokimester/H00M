@@ -9,7 +9,7 @@
 
 class Mesh {
 private:
-  uint VAO, VBO, IBO;
+  unsigned int VAO, VBO, IBO;
   unsigned int indexCount;
 
 public:

@@ -14,8 +14,8 @@ public:
 
   glm::vec3 getDirection() const { return direction; }
 
-  void useLight(uint ambientIntensityLocation, uint ambientColorLocation,
-                uint diffuseIntensityLocation, uint directionLocation);
+  void useLight(unsigned int ambientIntensityLocation, unsigned int ambientColorLocation,
+                unsigned int diffuseIntensityLocation, unsigned int directionLocation);
 
   ~DirectionalLight() {};
 };

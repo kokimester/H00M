@@ -8,12 +8,20 @@ in vec3 FragPos;
 
 out vec4 color;
 
-uniform sampler2D depthMap;
-uniform float near_plane;
-uniform float far_plane;
+uniform sampler2D shadowMap;
+uniform sampler2D diffuseTexture;
 
 const int MAX_POINT_LIGHTS = 3;
 const int MAX_SPOT_LIGHTS = 3;
+
+//SHADOW
+in VS_OUT {
+    vec3 FragPos;
+    vec3 Normal;
+    vec2 TexCoords;
+    vec4 FragPosLightSpace;
+} fs_in;
+//SHADOW
 
 struct Light
 {
@@ -152,13 +160,24 @@ vec4 CalcPointLights()
 	 }
 	return totalColor;
 }
-// required when using a perspective projection matrix
-float LinearizeDepth(float depth)
-{
-    float z = depth * 2.0 - 1.0; // Back to NDC
-    return (2.0 * near_plane * far_plane) / (far_plane + near_plane - z * (far_plane - near_plane));
-}
 
+
+float ShadowCalculation(vec4 fragPosLightSpace)
+{
+    // perform perspective divide
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    // transform to [0,1] range
+    projCoords = projCoords * 0.5 + 0.5;
+    // get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
+    float closestDepth = texture(shadowMap, projCoords.xy).r; 
+    // get depth of current fragment from light's perspective
+    float currentDepth = projCoords.z;
+    // check whether current frag pos is in shadow
+	float bias = max(0.05 * (1.0 - dot(Normal, spotLights[0].direction)), 0.005); 
+	float shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;  
+
+    return shadow;
+}
 void main()
 {
 	vec4 finalColor = CalcDirectionalLight();
@@ -166,11 +185,14 @@ void main()
 	finalColor += CalcSpotLights();
     // 10% ambient light in case there is not enough light
     //finalColor += vec4(0.1, 0.1, 0.1, 0.0);
+	vec3 textureColor = texture(diffuseTexture, fs_in.TexCoords).rgb;
+	//SHADOW
+	float shadow = ShadowCalculation(fs_in.FragPosLightSpace);                      
+    vec3 lighting = (1.0 - shadow) * textureColor;    
+    //lighting = vec3(shadow);
+    color = vec4(lighting, 1.0) * finalColor;
 
-    // FragColor = vec4(vec3(LinearizeDepth(depthValue) / far_plane), 1.0); // perspective
-    float depthValue = texture(theTexture,texCoord0).r;
-	color = vec4(vec3(depthValue),1.0f) * finalColor;
     //uncomment to check normals
-    // color = vec4(normalize(Normal) * 0.5 + 0.5, 1.0);
+    //color = vec4(normalize(Normal) * 0.5 + 0.5, 1.0);
 
 }

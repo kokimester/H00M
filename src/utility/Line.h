@@ -16,5 +16,5 @@ public:
 private:
   static constexpr float LENGTH = 10.f;
   std::array<float, 12> lineData;
-  uint VAO, VBO;
+  unsigned int VAO, VBO;
 };

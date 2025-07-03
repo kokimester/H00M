@@ -4,7 +4,8 @@ Model::Model() {}
 
 Model::~Model() { clearModel(); }
 
-void Model::loadModel(const std::string &fileLocation, bool isSmoothShaded) {
+// TODO: remove boolean argument
+void Model::loadModel(const std::filesystem::path &fileLocation, bool isSmoothShaded) {
   Assimp::Importer importer;
   // aiProcess_GenSmoothNormals
   // aiProcess_JoinIdenticalVertices
@@ -15,7 +16,7 @@ void Model::loadModel(const std::string &fileLocation, bool isSmoothShaded) {
   } else {
     flags |= aiProcess_GenNormals;
   }
-  const aiScene *scene = importer.ReadFile(fileLocation, flags);
+  const aiScene *scene = importer.ReadFile(fileLocation.string(), flags);
   if (!scene) {
     std::stringstream errS;
     errS << "Model " << fileLocation

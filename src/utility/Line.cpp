@@ -19,7 +19,7 @@ Line::Line() : VAO{0}, VBO{0} {
 
 void Line::updateWithPosition(const glm::vec3 &p1, const glm::vec3 &p2,
                               const glm::vec3 &color) {
-  uint idx = 0;
+  unsigned int idx = 0;
   // point 1
   lineData[idx++] = (p1.x);
   lineData[idx++] = (p1.y);

@@ -19,8 +19,8 @@ public:
   float getLinear() const { return linear; }
   float getExp() const { return exponent; }
 
-  void useLight(uint ambientIntensityLocation, uint ambientColorLocation,
-                uint diffuseIntensityLocation, uint positionLocation,
-                uint constantLocation, uint linearLocation,
-                uint exponentLocation);
+  void useLight(unsigned int ambientIntensityLocation, unsigned int ambientColorLocation,
+                unsigned int diffuseIntensityLocation, unsigned int positionLocation,
+                unsigned int constantLocation, unsigned int linearLocation,
+                unsigned int exponentLocation);
 };

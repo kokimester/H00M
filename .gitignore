@@ -1,6 +1,7 @@
 # Prerequisites
 build/
 .cache/
+.vscode/
 *.d
 
 # Compiled Object files
