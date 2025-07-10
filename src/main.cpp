@@ -51,6 +51,7 @@ std::string cameraLocStr, cameraFacingStr, entityCountStr;
 // settings
 const unsigned int SCR_WIDTH = 1366;
 const unsigned int SCR_HEIGHT = 768;
+namespace fs = std::filesystem;
 
 void errorMessageCallback([[maybe_unused]] GLenum source,
                           [[maybe_unused]] GLenum type,
@@ -58,20 +59,22 @@ void errorMessageCallback([[maybe_unused]] GLenum source,
                           [[maybe_unused]] GLenum severity,
                           [[maybe_unused]] GLsizei length,
                           const GLchar *message,
-                          [[maybe_unused]] const void *userParam) {
+                          [[maybe_unused]] const void *userParam)
+{
   std::cout << "errorMessageCallback was called with message: " << message
             << std::endl;
 }
 
-namespace fs = std::filesystem;
 
 int validateShaderFiles(const fs::path &projectPath, const fs::path &shaderDir,
                         const fs::path &vertexShaderFile,
-                        const fs::path &fragmentShaderFile, Shader &shader) {
+                        const fs::path &fragmentShaderFile, Shader &shader)
+{
   auto vertexPath = projectPath / shaderDir / vertexShaderFile;
   auto fragmentPath = projectPath / shaderDir / fragmentShaderFile;
   if (!std::filesystem::exists(vertexPath) ||
-      !std::filesystem::exists(fragmentPath)) {
+      !std::filesystem::exists(fragmentPath))
+  {
     std::cout << "ERROR::SHADER::MODEL Failed to load shader files."
               << std::endl;
     std::cout << vertexPath.string() << std::endl;
@@ -81,7 +84,8 @@ int validateShaderFiles(const fs::path &projectPath, const fs::path &shaderDir,
   std::string vertexFileName = vertexPath.string();
   std::string fragmentFileName = fragmentPath.string();
   if (shader.compile_and_link(vertexFileName.c_str(),
-                              fragmentFileName.c_str())) {
+                              fragmentFileName.c_str()))
+  {
     std::cout << "Shader compilation or linking error!\n";
     return -2;
   }
@@ -90,14 +94,16 @@ int validateShaderFiles(const fs::path &projectPath, const fs::path &shaderDir,
 
 using entity = std::size_t;
 entity MAX_ENTITY = 0;
-entity create_entity() {
+entity create_entity()
+{
   static entity entities = 0;
   ++entities;
   MAX_ENTITY = entities;
   return entities;
 }
 
-struct transform_component {
+struct transform_component
+{
   glm::vec3 pos{0.f};
   glm::vec3 vel{0.f};
   glm::vec3 rot{0.f};
@@ -106,7 +112,8 @@ struct transform_component {
   GLfloat rotationvel = 0.f;
 };
 
-struct model_component {
+struct model_component
+{
   glm::mat4 modelMat{1.f};
   glm::mat4 modelDefaultOrientationRotation{1.f};
   Model &model;
@@ -118,16 +125,21 @@ struct model_component {
         material{material}, texture{texture} {}
 };
 
-struct registry {
+struct registry
+{
   std::unordered_map<entity, model_component> models;
   std::unordered_map<entity, transform_component> transforms;
 };
 
-struct model_system {
+struct model_system
+{
 
-  void update(registry &reg) {
-    for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
-      if (reg.models.contains(e) && reg.transforms.contains(e)) {
+  void update(registry &reg)
+  {
+    for (std::size_t e = 1; e <= MAX_ENTITY; ++e)
+    {
+      if (reg.models.contains(e) && reg.transforms.contains(e))
+      {
         glm::mat4 &modelMatrix = reg.models.at(e).modelMat;
         modelMatrix = glm::mat4{1.f};
         auto &modelPosition = reg.transforms.at(e).pos;
@@ -145,16 +157,20 @@ struct model_system {
       }
     }
   }
-  void render(registry &reg, Shader &shader) {
-    for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
-      if (reg.models.contains(e)) {
+
+  void render(registry &reg, Shader &shader)
+  {
+    for (std::size_t e = 1; e <= MAX_ENTITY; ++e)
+    {
+      if (reg.models.contains(e))
+      {
         auto &modelMatrix = reg.models.at(e).modelMat;
         auto &model = reg.models.at(e).model;
         auto &material = reg.models.at(e).material;
-        //auto &texture = reg.models.at(e).texture;
+        auto &texture = reg.models.at(e).texture;
         shader.setMat4fv(modelMatrix, "model");
         shader.use();
-        // texture.useTexture();
+        texture.useTexture();
         shader.useMaterial(material, "material.shininess",
                            "material.specularIntensity");
         model.renderModel(false);
@@ -164,10 +180,14 @@ struct model_system {
   }
 };
 
-struct transform_system {
-  void update(registry &reg, float dt) {
-    for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
-      if (reg.transforms.contains(e)) {
+struct transform_system
+{
+  void update(registry &reg, float dt)
+  {
+    for (std::size_t e = 1; e <= MAX_ENTITY; ++e)
+    {
+      if (reg.transforms.contains(e))
+      {
         reg.transforms[e].pos += reg.transforms[e].vel * dt;
         reg.transforms[e].rotationInDegrees +=
             reg.transforms[e].rotationvel * dt;
@@ -176,7 +196,179 @@ struct transform_system {
   }
 };
 
-int main() {
+// TODO: move this to a class
+const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
+unsigned int depthMapFBO;
+unsigned int depthMap;
+void setupShadowTexture()
+{
+  glGenFramebuffers(1, &depthMapFBO);
+  glGenTextures(1, &depthMap);
+  glBindTexture(GL_TEXTURE_2D, depthMap);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH,
+               SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+  glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
+                         depthMap, 0);
+  glDrawBuffer(GL_NONE);
+  glReadBuffer(GL_NONE);
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+// TODO: handle more light sources
+void render(model_system &ms, registry &componentRegistry, Shader &shadow_shader, Shader &shader, const glm::mat4 &lightSpaceMatrix, unsigned int depthMapFBO, unsigned int depthMap)
+{
+  // 1. first render to depth map
+  shadow_shader.setMat4fv(lightSpaceMatrix, "lightSpaceMatrix");
+  glCullFace(GL_FRONT);
+  glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+  glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+  glClear(GL_DEPTH_BUFFER_BIT);
+  shadow_shader.use();
+  ms.render(componentRegistry, shadow_shader);
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glCullFace(GL_BACK); // don't forget to reset original culling face
+
+  // 2. then render scene as normal with shadow mapping (using depth map)
+  glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  shader.setMat4fv(lightSpaceMatrix, "lightSpaceMatrix");
+  // brickTexture.useTexture();
+  glActiveTexture(GL_TEXTURE1);
+  glBindTexture(GL_TEXTURE_2D, depthMap);
+  ms.render(componentRegistry, shader);
+};
+
+int loadshader(std::filesystem::path projectPath, const std::string &shaderDirStr, const std::string &shader_name, Shader &shader)
+{
+  std::string vertexFileExt = ".vert";
+  std::string fragFileExt = ".frag";
+  auto shaderDir = std::filesystem::path(shaderDirStr);
+  auto vFile = std::filesystem::path(shader_name + vertexFileExt);
+  auto fFile = std::filesystem::path(shader_name + fragFileExt);
+  if (validateShaderFiles(projectPath, shaderDir, vFile,
+                          fFile, shader))
+  {
+    std::cout << "Error occured while validating shader files!\n";
+    return -1;
+  }
+  std::cout << "Succesfully built shader: " << shader_name << "\n";
+  return 0;
+};
+
+bool isValidProjectPath(std::filesystem::path &projectPath)
+{
+  std::string_view projectName = "H00M";
+  while (projectPath != projectPath.root_path() &&
+         projectPath.filename() != projectName)
+  {
+    projectPath = projectPath.parent_path();
+  }
+  if (projectPath == projectPath.root_path())
+  {
+    std::cout << "ERROR::FILESYSTEM: Failed to find project directory!"
+              << std::endl;
+    return false;
+  }
+  return true;
+}
+
+unsigned int loadCubemap(const std::array<std::string_view, 6>& faces,const fs::path& skyBoxPath)
+{
+  unsigned int textureID;
+  glGenTextures(1, &textureID);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+  int width, height, nrChannels;
+  for (unsigned int i = 0; i < faces.size(); i++)
+  {
+    unsigned char *data = stbi_load(fs::path(skyBoxPath / faces[i]).string().c_str(), &width, &height, &nrChannels, 0);
+    if (data)
+    {
+      glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                   0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+      stbi_image_free(data);
+    }
+    else
+    {
+      std::cout << "Cubemap tex failed to load at path: " << faces[i] << std::endl;
+      stbi_image_free(data);
+    }
+  }
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+  return textureID;
+}
+
+unsigned int loadSkybox(){
+
+  float skyboxVertices[] = {
+    // positions          
+    -1.0f,  1.0f, -1.0f,
+    -1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
+
+    -1.0f, -1.0f,  1.0f,
+    -1.0f, -1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f,  1.0f,
+    -1.0f, -1.0f,  1.0f,
+
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+
+    -1.0f, -1.0f,  1.0f,
+    -1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f, -1.0f,  1.0f,
+    -1.0f, -1.0f,  1.0f,
+
+    -1.0f,  1.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+    -1.0f,  1.0f,  1.0f,
+    -1.0f,  1.0f, -1.0f,
+
+    -1.0f, -1.0f, -1.0f,
+    -1.0f, -1.0f,  1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+    -1.0f, -1.0f,  1.0f,
+     1.0f, -1.0f,  1.0f
+};
+    unsigned int skyboxVAO, skyboxVBO;
+    glGenVertexArrays(1, &skyboxVAO);
+    glGenBuffers(1, &skyboxVBO);
+    glBindVertexArray(skyboxVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    return skyboxVAO;
+}
+
+int main()
+{
   {
     Window window = Window(SCR_WIDTH, SCR_HEIGHT, GLFW_FALSE);
     window.Initialise();
@@ -201,9 +393,7 @@ int main() {
     // light source
     DirectionalLight mainLight =
         DirectionalLight({1.0f, 1.0f, 1.0f}, 0.3f, 0.4f, {0.0f, -1.0f, -1.0f});
-
     PointLight pointLights[MAX_POINT_LIGHTS];
-
     Spotlight spotLights[MAX_SPOT_LIGHTS];
 
     unsigned int pointLightCount = 0;
@@ -235,37 +425,29 @@ int main() {
 
     /* spotLightCount++; */
 
-    // material
-    Material shinyMaterial = Material(4.0f, 256);
-    Material dullMaterial = Material(0.3f, 2);
-
     // Check path
-    auto executablePath = std::filesystem::current_path();
-    auto projectPath = executablePath;
-    std::string_view projectName = "H00M";
-    while (projectPath != projectPath.root_path() &&
-           projectPath.filename() != projectName) {
-      projectPath = projectPath.parent_path();
-      /* std::cout << projectPath.string() << std::endl; */
-    }
-    if (projectPath == projectPath.root_path()) {
-      std::cout << "ERROR::FILESYSTEM: Failed to find project directory!"
-                << std::endl;
+    auto projectPath = std::filesystem::current_path();
+    if (!isValidProjectPath(projectPath))
+    {
+      std::cout << "Error occured while validating project path!\n";
       return -1;
     }
-    // projectPath is valid from here on out
 
+    // projectPath is valid from here on out
     Model cube;
     Model pyramid;
     Model teapot;
     Model sphere;
-    try {
+    try
+    {
       cube.loadModel(projectPath / std::filesystem::path("cube-tex.obj"));
       pyramid.loadModel(projectPath / std::filesystem::path("pyramid2.obj"),
                         false);
-      //teapot.loadModel(projectPath / std::filesystem::path("teapot.obj"));
+      // teapot.loadModel(projectPath / std::filesystem::path("teapot.obj"));
       sphere.loadModel(projectPath / std::filesystem::path("sphere.obj"));
-    } catch (const std::invalid_argument &err) {
+    }
+    catch (const std::invalid_argument &err)
+    {
       std::cerr << err.what() << std::endl;
     }
     // load textures
@@ -276,45 +458,29 @@ int main() {
     Texture plainTexture("../textures/floor.png");
     plainTexture.loadTextureAlpha();
 
+    // material
+    Material shinyMaterial = Material(4.0f, 256);
+    Material dullMaterial = Material(0.3f, 2);
+
     // compile shaders
     Shader shader;
     Shader line_shader;
     Shader shadow_shader;
     Shader debugDepthQuad;
+    Shader skyboxShader;
     // TODO: collect directories in one place
-    auto shaderDir = std::filesystem::path("shaders");
-    auto vertexShaderFile = std::filesystem::path("vertex_source.glsl.vert");
-    auto fragmentShaderFile =
-        std::filesystem::path("fragment_source.glsl.frag");
-    if (validateShaderFiles(projectPath, shaderDir, vertexShaderFile,
-                            fragmentShaderFile, shader)) {
-      std::cout << "Error occured while validating shader files!\n";
+    std::string shaderDir = "shaders";
+
+    if (loadshader(projectPath, shaderDir, "main", shader))
       return -1;
-    }
-    std::cout << "Succesfully built shader!\n";
-    auto lvf = std::filesystem::path("line.vert");
-    auto lff = std::filesystem::path("line.frag");
-    if (validateShaderFiles(projectPath, shaderDir, lvf, lff, line_shader)) {
-      std::cout << "Error occured while validating shader files!\n";
-      return -1;
-    }
-    std::cout << "Succesfully built line shader!\n";
-    auto shadowVertFile = std::filesystem::path("depthShader.vert");
-    auto shadowFragFile = std::filesystem::path("depthShader.frag");
-    if (validateShaderFiles(projectPath, shaderDir, shadowVertFile,
-                            shadowFragFile, shadow_shader)) {
-      std::cout << "Error occured while validating shadow shader files!\n";
-      return -1;
-    }
-    std::cout << "Succesfully built shadow shader!\n";
-    auto depthVertFile = std::filesystem::path("debugQuad.vert");
-    auto depthFragFile = std::filesystem::path("debugQuad.frag");
-    if (validateShaderFiles(projectPath, shaderDir, depthVertFile,
-                            depthFragFile, debugDepthQuad)) {
-      std::cout << "Error occured while validating shadow shader files!\n";
-      return -1;
-    }
-    std::cout << "Succesfully built depthDebug shader!\n";
+    if (loadshader(projectPath, shaderDir, "line", line_shader))
+      return -2;
+    if (loadshader(projectPath, shaderDir, "depthShader", shadow_shader))
+      return -3;
+    if (loadshader(projectPath, shaderDir, "debugQuad", debugDepthQuad))
+      return -4;
+    if (loadshader(projectPath, shaderDir, "skybox", skyboxShader))
+      return -5;
 
     glm::mat4 projection(1.f);
     projection =
@@ -331,7 +497,8 @@ int main() {
     auto textVertexPath = projectPath / shaderDir / textVertexShaderFile;
     auto textFragmentPath = projectPath / shaderDir / textFragmentShaderFile;
     if (!std::filesystem::exists(textVertexPath) ||
-        !std::filesystem::exists(textFragmentPath)) {
+        !std::filesystem::exists(textFragmentPath))
+    {
       std::cout << "ERROR::SHADER::TEXT Failed to load shader files."
                 << std::endl;
       std::cout << textVertexPath.string() << std::endl;
@@ -342,12 +509,14 @@ int main() {
     auto fontDir = std::filesystem::path("fonts");
     auto fontFile = std::filesystem::path("Consolas-Bold.ttf");
     auto defaultFontPath = projectPath / fontDir / fontFile;
-    if (!std::filesystem::exists(defaultFontPath)) {
+    if (!std::filesystem::exists(defaultFontPath))
+    {
       std::cout << "ERROR::FREETYPE: Failed to load font_name" << std::endl;
       return -1;
     }
 
-    if (textrenderer.init(textVertexPath, textFragmentPath, defaultFontPath)) {
+    if (textrenderer.init(textVertexPath, textFragmentPath, defaultFontPath))
+    {
       std::cout << "ERROR::TEXTRENDERER: Failed to init FontRenderer"
                 << std::endl;
       return -1;
@@ -363,8 +532,10 @@ int main() {
     // TODO: create component addition one-by-one instead
     auto addEntity = [&](Model &model, Material &mat, Texture &texture,
                          transform_component tc = {},
-                         glm::mat4 defaultRotation = {1.f}) {
-      if (MAX_ENTITY >= 20000) {
+                         glm::mat4 defaultRotation = {1.f})
+    {
+      if (MAX_ENTITY >= 20000)
+      {
         std::cout << "Entity cap reached" << std::endl;
         return;
       }
@@ -374,12 +545,15 @@ int main() {
       componentRegistry.transforms[cubeEntity] = tc;
     };
 
-    auto addEntities = [&](unsigned int count = 100) {
-      if (MAX_ENTITY >= 20000) {
+    auto addEntities = [&](unsigned int count = 100)
+    {
+      if (MAX_ENTITY >= 20000)
+      {
         std::cout << "Entity cap reached" << std::endl;
         return;
       }
-      for (unsigned int i = 0; i < count; ++i) {
+      for (unsigned int i = 0; i < count; ++i)
+      {
         addEntity(cube, dullMaterial, brickTexture,
                   transform_component{
                       .pos = {(rand() % 40) - 20, 10.0f, (rand() % 40) - 20},
@@ -390,6 +564,14 @@ int main() {
                       .rotationvel = 0.f});
       }
     };
+
+    addEntity(cube, dullMaterial, brickTexture,
+              transform_component{.pos = {0.0f, -2.0005f, 0.0f},
+                                  .vel = glm::vec3{0.f},
+                                  .rot = {0.0f, 1.0f, 0.0f},
+                                  .scale = glm::vec3{20.f, 0.01f, 20.f},
+                                  .rotationInDegrees = 0.f,
+                                  .rotationvel = 0.f});
 
     addEntity(sphere, dullMaterial, brickTexture,
               transform_component{.pos = {-3.0f, 1.0f, -1.0f},
@@ -424,30 +606,29 @@ int main() {
                                     .rotationInDegrees = 0.f,
                                     .rotationvel = 0.f});
     }
-    unsigned int depthMapFBO;
-    glGenFramebuffers(1, &depthMapFBO);
-    const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
 
-    unsigned int depthMap;
-    glGenTextures(1, &depthMap);
-    glBindTexture(GL_TEXTURE_2D, depthMap);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH,
-                 SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    shader.set1i(0, "diffuseTexture");
+    shader.set1i(1, "shadowMap");
+    debugDepthQuad.set1i(0, "depthMap");
+    skyboxShader.set1i(0,"skybox");
 
-    glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
-                           depthMap, 0);
-    glDrawBuffer(GL_NONE);
-    glReadBuffer(GL_NONE);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    shader.set1i(0,"diffuseTexture");
-    shader.set1i(1,"shadowMap");
-    debugDepthQuad.set1i(0,"depthMap");
+    setupShadowTexture();
+    // setup cubemap
+    fs::path textureDir("textures");
+    fs::path skyboxDir("skybox");
+    fs::path skyBoxPath = projectPath / textureDir / skyboxDir;
+    std::array<std::string_view, 6> cubemapFaces =
+    {
+      "right.jpg",
+      "left.jpg",
+      "top.jpg",
+      "bottom.jpg",
+      "front.jpg",
+      "back.jpg"};
+      
+    unsigned int cubemapTexture = loadCubemap(cubemapFaces,skyBoxPath);
+    
+    unsigned int skyboxVAO = loadSkybox();
 
     while (!window.getShouldClose()) // returns true if window is closed
     {
@@ -468,12 +649,15 @@ int main() {
       camera.keyControl(window.getKeys(), deltaTime);
       camera.mouseControl(window.getXChange(), window.getYChange());
 
-      if (camera.isFlashlightOn()) {
+      if (camera.isFlashlightOn())
+      {
         spotLights[0].update(camera.getCameraPosition(),
                              camera.getCameraFront(), camera.getRight());
-      } else {
-        //spotLights[0].disable();
-        auto pos = glm::vec3(glm::cos(now/2)*5.f, 10.0f, glm::sin(now/2)*5.f);
+      }
+      else
+      {
+        // spotLights[0].disable();
+        auto pos = glm::vec3(glm::cos(now / 2) * 5.f, 10.0f, glm::sin(now / 2) * 5.f);
         spotLights[0].update(pos,
                              glm::normalize(glm::vec3(0.f) - pos), camera.getRight());
       }
@@ -491,6 +675,8 @@ int main() {
       shader.setMat4fv(projection, "projection");
       //----Camera----
 
+
+
       //----Lighting data----
       shader.setDirectionalLight(mainLight);
       shader.setPointLights(pointLights, pointLightCount);
@@ -499,105 +685,52 @@ int main() {
 
       // ----Shadow pass-----
       float near_plane = 1.0f, far_plane = 25.f;
-      
-        glm::mat4 lightProjection =
-            glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
-        glm::mat4 lightView = glm::lookAt(glm::vec3(0.0f, 3.0f, 1.0f),
-                                          glm::vec3(0.0f, 0.0f, 0.0f),
-                                          glm::vec3(0.0f, 1.0f, 0.0f));
-        auto& flashlight = spotLights[0];
-        
-        lightView = glm::lookAt(flashlight.getPos(), flashlight.getPos()+flashlight.getDirection(),
-                                glm::vec3(0.f,1.f,0.f));
-        glm::mat4 lightSpaceMatrix = lightProjection * lightView;
-        // 1. first render to depth map
-        shadow_shader.use();
-        shadow_shader.setMat4fv(lightSpaceMatrix, "lightSpaceMatrix");
-        glCullFace(GL_FRONT);
-        glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
-        glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-          glClear(GL_DEPTH_BUFFER_BIT);
-          glActiveTexture(GL_TEXTURE0);
-          glBindTexture(GL_TEXTURE_2D, brickTexture.getID());
-          brickTexture.useTexture();
-          shadow_shader.use();
-          cube.renderModel(false);
-          ms.render(componentRegistry, shadow_shader);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glCullFace(GL_BACK); // don't forget to reset original culling face
-      
-      
-        // 2. then render scene as normal with shadow mapping (using depth map)
-        glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        shader.setMat4fv(lightSpaceMatrix,"lightSpaceMatrix");
-        // ConfigureShaderAndMatrices();
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, brickTexture.getID());
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, depthMap);
-        shader.use();
-        cube.renderModel(false);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, brickTexture.getID());
-        // RenderScene();
-        ms.render(componentRegistry, shader);
-      
-      // ----Shadow pass-----
+      glm::mat4 lightProjection =
+          glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+      glm::mat4 lightView = glm::lookAt(-10.f * mainLight.getDirection(),
+                                        glm::vec3(0.0f, 0.0f, 0.0f),
+                                        glm::vec3(0.0f, 1.0f, 0.0f));
+      auto &flashlight = spotLights[0];
+      lightView = glm::lookAt(flashlight.getPos(), flashlight.getPos() + flashlight.getDirection(),
+                              glm::vec3(0.f, 1.f, 0.f));
+      glm::mat4 lightSpaceMatrix = lightProjection * lightView;
 
+      render(ms, componentRegistry, shadow_shader, shader, lightSpaceMatrix, depthMapFBO, depthMap);
 
-      //debug quad
-      debugDepthQuad.use();
-      debugDepthQuad.set1f(near_plane,"near_plane");
-      debugDepthQuad.set1f(far_plane, "far_plane");
-      glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_2D, depthMap);
-      //debug quad
+      // debug quad
+      //  debugDepthQuad.use();
+      //  debugDepthQuad.set1f(near_plane,"near_plane");
+      //  debugDepthQuad.set1f(far_plane, "far_plane");
+      //  glActiveTexture(GL_TEXTURE0);
+      //  glBindTexture(GL_TEXTURE_2D, depthMap);
+      // debug quad
 
-      // ----Lighting pass-----
-      {
-        // ----Ground----
-        // render the ground (leaving it here for now bcs shadowmapping)
-        glm::mat4 model = glm::mat4(1.f);
-        model = glm::translate(model, glm::vec3(0.0f, -2.0005f, 0.0f));
-        model = glm::scale(model, glm::vec3(20.f, 0.01f, 20.f));
-        model =
-            glm::rotate(model, glm::radians(180.f), glm::vec3(1.f, 0.f, 0.f));
-        shader.setMat4fv(model, "model");
-        shader.use();
-        // beallitjuk a texturet
-        // dirtTexture.useTexture();
-        shader.useMaterial(dullMaterial, "material.shininess",
-                           "material.specularIntensity");
-        // letrehozzuk a floort
-        cube.renderModel(false);
-        shader.unuse();
-        // ----Ground----
+      static Line line;
+      line.updateWithDirection(spotLights[0].getPos(),
+                               spotLights[0].getDirection(), {1.f, 0.f, 0.f});
+      line_shader.setMat4fv(view, "view");
+      line_shader.setMat4fv(projection, "projection");
+      line_shader.use();
+      line.render();
 
-        static Line line;
-        line.updateWithDirection(spotLights[0].getPos(),
-                                 spotLights[0].getDirection(), {1.f, 0.f, 0.f});
-        line_shader.setMat4fv(view, "view");
-        line_shader.setMat4fv(projection, "projection");
-        line_shader.use();
-        line.render();
+      // render all entities
+      /* ms.render(componentRegistry, shader); */
+      // render all entities
 
-        // render all entities
-        /* ms.render(componentRegistry, shader); */
-        // render all entities
-      }
       // ----Lighting pass-----
 
       auto keys = window.getKeys();
-      if (keys[GLFW_KEY_E]) {
+      if (keys[GLFW_KEY_E])
+      {
         addEntities(1000);
         keys[GLFW_KEY_E] = false;
       }
 
       // handle performance debug output
       {
-        if (now - lastTimeTextWasRendered > 1 / textTickRate) {
+        if (now - lastTimeTextWasRendered > 1 / textTickRate)
+        {
           lastTimeTextWasRendered = now;
           timeStr = "Elapsed time: " +
                     std::to_string(static_cast<unsigned int>(
@@ -626,9 +759,27 @@ int main() {
         // ------ ADDING TEXT RENDER HERE ----------
       }
 
+      //----Skybox----
+      // draw skybox as last
+      glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
+      auto skyboxView = glm::mat4(glm::mat3(view));
+      skyboxShader.setMat4fv(skyboxView, "view");
+      skyboxShader.setMat4fv(projection, "projection");
+      // ... set view and projection matrix
+      skyboxShader.use();
+      glBindVertexArray(skyboxVAO);
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+      glDrawArrays(GL_TRIANGLES, 0, 36);
+      glDepthMask(GL_TRUE);
+      glBindVertexArray(0);
+      glDepthFunc(GL_LESS); // set depth function back to default
+      //----Skybox----
+
       // Print GL errors
       GLenum err;
-      while ((err = glGetError()) != GL_NO_ERROR) {
+      while ((err = glGetError()) != GL_NO_ERROR)
+      {
         std::cout << "OpenGL error: " << err << std::endl;
       }
 
