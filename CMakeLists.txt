@@ -9,13 +9,14 @@ set( CMAKE_VERBOSE_MAKEFILE on )
 #
 # CMake setup
 #
+#TODO: make cmake-configurations for the 2 different platforms
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set (CMAKE_VERBOSE_MAKEFILE 0) # 1 should be used for debugging
 set (CMAKE_SUPPRESS_REGENERATION TRUE) # Suppresses ZERO_CHECK
 if(MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
 else()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -std=c++11")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -std=c++23")
   if(NOT WIN32)
     set(GLAD_LIBRARIES dl)
   endif()
@@ -134,10 +135,17 @@ add_executable (${PROJECT_NAME} ${PROJECT_SOURCES} ${PROJECT_HEADERS}
                                 ${PROJECT_SHADERS} ${PROJECT_CONFIGS}
                                 ${VENDORS_SOURCES})
 target_link_libraries (${PROJECT_NAME}
+                       PUBLIC
                        glfw
                        ${GLFW_LIBRARIES}
                        ${GLAD_LIBRARIES}
                        assimp
                        freetype)
+if(WIN32)
+  message(STATUS "Adding linker option")
+  target_link_libraries(${PROJECT_NAME}
+  PRIVATE
+  stdc++exp)
+endif()
 set_target_properties (${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${PROJECT_NAME})
