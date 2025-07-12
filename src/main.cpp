@@ -61,8 +61,8 @@ void errorMessageCallback([[maybe_unused]] GLenum source,
                           const GLchar *message,
                           [[maybe_unused]] const void *userParam)
 {
-  std::cout << "errorMessageCallback was called with message: " << message
-            << std::endl;
+  //std::cout << "errorMessageCallback was called with message: " << message
+  //          << std::endl;
 }
 
 
@@ -173,7 +173,7 @@ struct model_system
         texture.useTexture();
         shader.useMaterial(material, "material.shininess",
                            "material.specularIntensity");
-        model.renderModel(false);
+        model.renderModel();
         shader.unuse();
       }
     }
@@ -438,25 +438,34 @@ int main()
     Model pyramid;
     Model teapot;
     Model sphere;
+    Model ak;
+    Model arm;
+    fs::path modelDir = "models";
     try
     {
-      cube.loadModel(projectPath / std::filesystem::path("cube-tex.obj"));
-      pyramid.loadModel(projectPath / std::filesystem::path("pyramid2.obj"),
-                        false);
-      // teapot.loadModel(projectPath / std::filesystem::path("teapot.obj"));
-      sphere.loadModel(projectPath / std::filesystem::path("sphere.obj"));
+      cube.loadModel(projectPath / modelDir / std::filesystem::path("cube-tex.obj"), false);
+      pyramid.loadModel(projectPath / modelDir / std::filesystem::path("pyramid2.obj"), false
+                        );
+      // teapot.loadModel(projectPath / modelDir / std::filesystem::path("teapot.obj"));
+      sphere.loadModel(projectPath / modelDir / std::filesystem::path("sphere.obj"));
+      ak.loadModel(projectPath / modelDir / std::filesystem::path("ak-47.obj"));
+      //arm.loadModel(projectPath / modelDir / std::filesystem::path("arm.obj"));
     }
     catch (const std::invalid_argument &err)
     {
       std::cerr << err.what() << std::endl;
     }
+    std::cerr << "Loaded all models" << std::endl;
     // load textures
     Texture brickTexture("../textures/brick.png");
-    brickTexture.loadTextureAlpha();
+    brickTexture.loadTexture();
     Texture dirtTexture("../textures/dirt.png");
-    dirtTexture.loadTextureAlpha();
+    dirtTexture.loadTexture();
     Texture plainTexture("../textures/floor.png");
-    plainTexture.loadTextureAlpha();
+    plainTexture.loadTexture();
+    Texture whiteTexture("../textures/white.png");
+    whiteTexture.loadTexture();
+    std::cerr << "Loaded all textures" << std::endl;
 
     // material
     Material shinyMaterial = Material(4.0f, 256);
@@ -564,6 +573,14 @@ int main()
                       .rotationvel = 0.f});
       }
     };
+
+    // addEntity(ak, dullMaterial, brickTexture,
+    //       transform_component{.pos = {0.0f, 0.0f, 0.0f},
+    //                           .vel = glm::vec3{0.f},
+    //                           .rot = {0.0f, 1.0f, 0.0f},
+    //                           .scale = glm::vec3{0.01f},
+    //                           .rotationInDegrees = 0.f,
+    //                           .rotationvel = 0.f});
 
     addEntity(cube, dullMaterial, brickTexture,
               transform_component{.pos = {0.0f, -2.0005f, 0.0f},
@@ -727,6 +744,38 @@ int main()
         keys[GLFW_KEY_E] = false;
       }
 
+      
+      
+      auto modelMatrix = glm::mat4{1.f};
+      auto scale = glm::vec3{0.01f};
+      modelMatrix = glm::translate(modelMatrix, glm::vec3{1.f,-0.3f,-2.5f});
+      modelMatrix = glm::scale(modelMatrix, scale);
+      modelMatrix = glm::rotate(modelMatrix, glm::radians(-85.f), glm::vec3{0.f,1.f,0.f});
+      shader.setMat4fv(modelMatrix,"model");
+      shader.setMat4fv(glm::mat4(1.f),"view");
+      shader.setMat4fv(projection, "projection");
+      // shader.useMaterial(dullMaterial, "material.shininess",
+      //                      "material.specularIntensity");
+      shader.use();
+      ak.renderModel();
+
+      //----Skybox----
+      // draw skybox as last
+      glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
+      auto skyboxView = glm::mat4(glm::mat3(view));
+      skyboxShader.setMat4fv(skyboxView, "view");
+      skyboxShader.setMat4fv(projection, "projection");
+      // ... set view and projection matrix
+      skyboxShader.use();
+      glBindVertexArray(skyboxVAO);
+      glActiveTexture(GL_TEXTURE0);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+      glDrawArrays(GL_TRIANGLES, 0, 36);
+      glDepthMask(GL_TRUE);
+      glBindVertexArray(0);
+      glDepthFunc(GL_LESS); // set depth function back to default
+      //----Skybox----
+
       // handle performance debug output
       {
         if (now - lastTimeTextWasRendered > 1 / textTickRate)
@@ -745,6 +794,7 @@ int main()
           cameraFacingStr =
               std::string("Entities: ") + std::to_string(MAX_ENTITY);
         }
+        //TODO: Fix text render, currently not drawing on the skybox
         // ------ ADDING TEXT RENDER HERE ----------
         textrenderer.renderText(timeStr, 0.0f, SCR_HEIGHT - 24, 0.5f,
                                 glm::vec3(1.0f, 1.0f, 1.0f));
@@ -758,23 +808,6 @@ int main()
                                 glm::vec3(1.0f, 1.0f, 1.0f));
         // ------ ADDING TEXT RENDER HERE ----------
       }
-
-      //----Skybox----
-      // draw skybox as last
-      glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
-      auto skyboxView = glm::mat4(glm::mat3(view));
-      skyboxShader.setMat4fv(skyboxView, "view");
-      skyboxShader.setMat4fv(projection, "projection");
-      // ... set view and projection matrix
-      skyboxShader.use();
-      glBindVertexArray(skyboxVAO);
-      glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-      glDrawArrays(GL_TRIANGLES, 0, 36);
-      glDepthMask(GL_TRUE);
-      glBindVertexArray(0);
-      glDepthFunc(GL_LESS); // set depth function back to default
-      //----Skybox----
 
       // Print GL errors
       GLenum err;
