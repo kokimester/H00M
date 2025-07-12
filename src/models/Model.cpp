@@ -1,4 +1,5 @@
 #include "Model.h"
+#include <print>
 
 Model::Model() {}
 
@@ -46,14 +47,12 @@ void Model::renderModel(bool useTexture) {
 void Model::clearModel() {
   for (size_t i = 0; i < meshList.size(); i++) {
     if (meshList[i]) {
-      delete meshList[i];
-      meshList[i] = nullptr;
+      meshList[i].reset();
     }
   }
   for (size_t i = 0; i < textureList.size(); i++) {
     if (textureList[i]) {
-      delete textureList[i];
-      textureList[i] = nullptr;
+      textureList[i].reset();
     }
   }
 }
@@ -110,43 +109,42 @@ void Model::loadMesh(aiMesh *mesh, const aiScene *scene) {
       indices.push_back(face.mIndices[j]);
     }
   }
-
-  Mesh *newMesh = new Mesh();
-  newMesh->createMesh(&vertices[0], &indices[0], vertices.size(),
+  meshList.emplace_back(std::make_unique<Mesh>());
+  meshList.back()->createMesh(&vertices[0], &indices[0], vertices.size(),
                       indices.size());
-  meshList.push_back(newMesh);
-  meshToTex.push_back(mesh->mMaterialIndex);
+  meshToTex.emplace_back(mesh->mMaterialIndex);
+  std::println("Adding meshToTex index: {}",mesh->mMaterialIndex);
 }
 
 void Model::loadMaterials(const aiScene *scene) {
   textureList.resize(scene->mNumMaterials);
-  /* std::cout << "Material count: " << scene->mNumMaterials << std::endl; */
+  std::cout << "Material count: " << scene->mNumMaterials << std::endl;
 
   for (size_t i = 0; i < scene->mNumMaterials; i++) {
     aiMaterial *material = scene->mMaterials[i];
 
-    /* std::cout << material->GetName().data << std::endl; */
+    std::println("[{}] Material name: {}",i,material->GetName().data);
     textureList[i] = nullptr;
-
-    if (material->GetTextureCount(aiTextureType_DIFFUSE)) {
+    int textureCount = material->GetTextureCount(aiTextureType_DIFFUSE);
+    std::println("Found {} textures.",textureCount);
+    if (textureCount) {
       aiString path;
       if (material->GetTexture(aiTextureType_DIFFUSE, 0, &path) == AI_SUCCESS) {
         int idx = std::string(path.data).rfind('\\');
         std::string fileName = std::string(path.data).substr(idx + 1);
 
-        std::string texPath = std::string("textures/") + fileName;
+        std::string texPath = std::string("../textures/") + fileName;
 
-        textureList[i] = new Texture(texPath.c_str());
-
+        textureList[i] = std::make_unique<Texture>(texPath.c_str());
         if (!textureList[i]->loadTexture()) {
           std::cerr << "Failed to load texture at: " << texPath << std::endl;
-          delete textureList[i];
-          textureList[i] = nullptr;
+          textureList[i].reset();
         }
       }
     }
     if (!textureList[i]) {
-      textureList[i] = new Texture("../textures/missing.jpg");
+      std::println("Loading missing texture...");
+      textureList[i] = std::make_unique<Texture>("../textures/missing.jpg");
       textureList[i]->loadTexture();
     }
   }

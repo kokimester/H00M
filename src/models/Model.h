@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <filesystem>
+#include <memory>
 
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
@@ -21,8 +22,8 @@
 //===================
 class Model {
 private:
-  std::vector<Mesh *> meshList;
-  std::vector<Texture *> textureList;
+  std::vector<std::unique_ptr<Mesh>> meshList;
+  std::vector<std::unique_ptr<Texture>> textureList;
   std::vector<unsigned int> meshToTex;
 
 public:
