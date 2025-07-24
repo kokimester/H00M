@@ -11,6 +11,7 @@ Texture::Texture(const char *fileLoc)
     throw std::invalid_argument(
         "Texture constructor received empty file location.");
   }
+  //TODO: wtf
   fileLocation = new char[length];
   for (int i = 0; i < length; i++) {
     fileLocation[i] = fileLoc[i];

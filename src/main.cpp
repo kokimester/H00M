@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
+#include <print>
 #include <map>
 #include <string>
 
@@ -58,11 +59,10 @@ void errorMessageCallback([[maybe_unused]] GLenum source,
                           [[maybe_unused]] GLuint id,
                           [[maybe_unused]] GLenum severity,
                           [[maybe_unused]] GLsizei length,
-                          const GLchar *message,
+                          [[maybe_unused]] const GLchar *message,
                           [[maybe_unused]] const void *userParam)
 {
-  //std::cout << "errorMessageCallback was called with message: " << message
-  //          << std::endl;
+  //std::println("errorMessageCallback was called with message: {}",message);
 }
 
 
@@ -173,7 +173,7 @@ struct model_system
         texture.useTexture();
         shader.useMaterial(material, "material.shininess",
                            "material.specularIntensity");
-        model.renderModel();
+        model.Render();
         shader.unuse();
       }
     }
@@ -371,7 +371,10 @@ int main()
 {
   {
     Window window = Window(SCR_WIDTH, SCR_HEIGHT, GLFW_FALSE);
-    window.Initialise();
+    if(window.Initialise()){
+      std::println("Window failed to initialize");
+      return -1;
+    }
 
     /* glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, 1); */
     /* glfwSetFramebufferSizeCallback(window, framebuffer_size_callback); */
@@ -443,17 +446,28 @@ int main()
     fs::path modelDir = "models";
     try
     {
-      cube.loadModel(projectPath / modelDir / std::filesystem::path("cube-tex.obj"), false);
-      pyramid.loadModel(projectPath / modelDir / std::filesystem::path("pyramid2.obj"), false
-                        );
-      // teapot.loadModel(projectPath / modelDir / std::filesystem::path("teapot.obj"));
-      sphere.loadModel(projectPath / modelDir / std::filesystem::path("sphere.obj"));
-      ak.loadModel(projectPath / modelDir / std::filesystem::path("ak-47.obj"));
-      //arm.loadModel(projectPath / modelDir / std::filesystem::path("arm.obj"));
+      // cube.loadModel(projectPath / modelDir / std::filesystem::path("cube-tex.obj"), true);
+      // pyramid.loadModel(projectPath / modelDir / std::filesystem::path("pyramid2.obj"), true);
+      // sphere.loadModel(projectPath / modelDir / std::filesystem::path("sphere.obj"), true);
+      // ak.loadModel(projectPath / modelDir / std::filesystem::path("ak47.glb"), false);
+      //arm.loadModel(projectPath / modelDir / std::filesystem::path("viewmodel.obj"), false);
     }
     catch (const std::invalid_argument &err)
     {
       std::cerr << err.what() << std::endl;
+    }
+    bool modelsLoaded = true;
+    std::println("Loading cube");
+    modelsLoaded &= cube.LoadMesh(projectPath / modelDir / std::filesystem::path("cube-tex.obj"));
+    std::println("Loading pyramid");
+    modelsLoaded &= pyramid.LoadMesh(projectPath / modelDir / std::filesystem::path("pyramid2.obj"));
+    std::println("Loading sphere");
+    modelsLoaded &= sphere.LoadMesh(projectPath / modelDir / std::filesystem::path("sphere.obj"));
+    std::println("Loading viewmodel");
+    modelsLoaded &= ak.LoadMesh(projectPath / modelDir / std::filesystem::path("ak47.gltf"));
+    if(modelsLoaded == false){
+      std::println("Models failed to load!");
+      return -1;
     }
     std::cerr << "Loaded all models" << std::endl;
     // load textures
@@ -477,6 +491,7 @@ int main()
     Shader shadow_shader;
     Shader debugDepthQuad;
     Shader skyboxShader;
+    Shader viewmodelShader;
     // TODO: collect directories in one place
     std::string shaderDir = "shaders";
 
@@ -490,6 +505,8 @@ int main()
       return -4;
     if (loadshader(projectPath, shaderDir, "skybox", skyboxShader))
       return -5;
+    if (loadshader(projectPath, shaderDir, "viewmodel", viewmodelShader))
+      return -6;
 
     glm::mat4 projection(1.f);
     projection =
@@ -574,16 +591,16 @@ int main()
       }
     };
 
-    // addEntity(ak, dullMaterial, brickTexture,
-    //       transform_component{.pos = {0.0f, 0.0f, 0.0f},
-    //                           .vel = glm::vec3{0.f},
-    //                           .rot = {0.0f, 1.0f, 0.0f},
-    //                           .scale = glm::vec3{0.01f},
-    //                           .rotationInDegrees = 0.f,
-    //                           .rotationvel = 0.f});
+    addEntity(ak, dullMaterial, brickTexture,
+          transform_component{.pos = {0.0f, 1.0f, 0.0f},
+                              .vel = glm::vec3{0.f},
+                              .rot = {0.0f, 1.0f, 0.0f},
+                              .scale = glm::vec3{0.1f},
+                              .rotationInDegrees = 0.f,
+                              .rotationvel = 0.f});
 
     addEntity(cube, dullMaterial, brickTexture,
-              transform_component{.pos = {0.0f, -2.0005f, 0.0f},
+              transform_component{.pos = {-10.0f, -2.0005f, -10.0f},
                                   .vel = glm::vec3{0.f},
                                   .rot = {0.0f, 1.0f, 0.0f},
                                   .scale = glm::vec3{20.f, 0.01f, 20.f},
@@ -626,8 +643,13 @@ int main()
 
     shader.set1i(0, "diffuseTexture");
     shader.set1i(1, "shadowMap");
+    
+    viewmodelShader.set1i(0, "diffuseTexture");
+
     debugDepthQuad.set1i(0, "depthMap");
     skyboxShader.set1i(0,"skybox");
+
+    viewmodelShader.setupBones();
 
     setupShadowTexture();
     // setup cubemap
@@ -646,6 +668,8 @@ int main()
     unsigned int cubemapTexture = loadCubemap(cubemapFaces,skyBoxPath);
     
     unsigned int skyboxVAO = loadSkybox();
+    GLfloat startTime = glfwGetTime();
+    GLint activeBoneIndex = 0;
 
     while (!window.getShouldClose()) // returns true if window is closed
     {
@@ -673,7 +697,7 @@ int main()
       }
       else
       {
-        // spotLights[0].disable();
+        //spotLights[0].disable();
         auto pos = glm::vec3(glm::cos(now / 2) * 5.f, 10.0f, glm::sin(now / 2) * 5.f);
         spotLights[0].update(pos,
                              glm::normalize(glm::vec3(0.f) - pos), camera.getRight());
@@ -698,6 +722,11 @@ int main()
       shader.setDirectionalLight(mainLight);
       shader.setPointLights(pointLights, pointLightCount);
       shader.setSpotLights(spotLights, spotLightCount);
+      //----Lighting data----
+      //----Lighting data----
+      viewmodelShader.setDirectionalLight(mainLight);
+      viewmodelShader.setPointLights(pointLights, 0);
+      viewmodelShader.setSpotLights(spotLights, 0);
       //----Lighting data----
 
       // ----Shadow pass-----
@@ -740,24 +769,44 @@ int main()
       auto keys = window.getKeys();
       if (keys[GLFW_KEY_E])
       {
-        addEntities(1000);
+        //addEntities(1000);
+        activeBoneIndex = (activeBoneIndex + 1) % ak.NumBones();
+        std::println("Active bone: {}", activeBoneIndex);
         keys[GLFW_KEY_E] = false;
+      }
+      static bool currentlyInAnimation = false;
+      static float maxAnimationTime = 1.f;
+      if (keys[GLFW_KEY_R])
+      {
+        ak.SetActiveAnimation(0);
+        if(!currentlyInAnimation){
+          startTime = now;
+          currentlyInAnimation = true;
+          maxAnimationTime = 1.f;
+        }
+        keys[GLFW_KEY_R] = false;
+      }
+      if (keys[GLFW_KEY_SPACE])
+      {
+        if(!currentlyInAnimation){
+          ak.SetActiveAnimation(2);
+          startTime = now;
+          currentlyInAnimation = true;
+          maxAnimationTime = 0.25f;
+        }
+      }
+      float AnimationTimeSec = 0.f;
+      if(currentlyInAnimation){
+        AnimationTimeSec = now - startTime;
+      }else{
+        AnimationTimeSec = 0.f;
+      }
+      if(AnimationTimeSec > maxAnimationTime){
+        currentlyInAnimation = false;
       }
 
       
-      
-      auto modelMatrix = glm::mat4{1.f};
-      auto scale = glm::vec3{0.01f};
-      modelMatrix = glm::translate(modelMatrix, glm::vec3{1.f,-0.3f,-2.5f});
-      modelMatrix = glm::scale(modelMatrix, scale);
-      modelMatrix = glm::rotate(modelMatrix, glm::radians(-85.f), glm::vec3{0.f,1.f,0.f});
-      shader.setMat4fv(modelMatrix,"model");
-      shader.setMat4fv(glm::mat4(1.f),"view");
-      shader.setMat4fv(projection, "projection");
-      // shader.useMaterial(dullMaterial, "material.shininess",
-      //                      "material.specularIntensity");
-      shader.use();
-      ak.renderModel();
+
 
       //----Skybox----
       // draw skybox as last
@@ -775,6 +824,35 @@ int main()
       glBindVertexArray(0);
       glDepthFunc(GL_LESS); // set depth function back to default
       //----Skybox----
+
+      //----Viewmodel rendering-----
+      glClear(GL_DEPTH_BUFFER_BIT);
+      //glDisable(GL_DEPTH_TEST);
+      auto modelMatrix = glm::mat4{1.f};
+      auto scale = glm::vec3{0.01f};
+      modelMatrix = glm::translate(modelMatrix, glm::vec3{0.f,0.f,0.f});
+      //modelMatrix = glm::scale(modelMatrix, scale);
+      modelMatrix = glm::rotate(modelMatrix, glm::radians(-180.f), glm::vec3{0.f,1.f,0.f});
+      viewmodelShader.setMat4fv(modelMatrix,"model");
+      //viewmodelShader.setMat4fv(glm::mat4(1.f),"view");
+      viewmodelShader.setMat4fv(view,"view");
+      viewmodelShader.setMat4fv(projection, "projection");
+      viewmodelShader.set1i(activeBoneIndex,"activeBoneIndex");
+      viewmodelShader.use();
+      viewmodelShader.useMaterial(shinyMaterial, "material.shininess",
+                            "material.specularIntensity");
+      std::vector<glm::mat4> boneTransforms;
+      //static float AnimationTimeSec = 0;
+      ak.GetBoneTransforms(AnimationTimeSec, boneTransforms);
+      for (size_t i = 1 ; i < boneTransforms.size() ; i++) {
+        //boneTransforms[i] = glm::mat4{1.f};
+        viewmodelShader.setBoneTransform(i, boneTransforms[i]);
+      }
+      viewmodelShader.use();
+      //brickTexture.useTexture();
+      ak.Render();
+      //glEnable(GL_DEPTH_TEST);
+      //----Viewmodel rendering-----
 
       // handle performance debug output
       {
@@ -808,13 +886,7 @@ int main()
                                 glm::vec3(1.0f, 1.0f, 1.0f));
         // ------ ADDING TEXT RENDER HERE ----------
       }
-
-      // Print GL errors
-      GLenum err;
-      while ((err = glGetError()) != GL_NO_ERROR)
-      {
-        std::cout << "OpenGL error: " << err << std::endl;
-      }
+      
 
       // buffer swap(double buffering)
       window.swapBuffers();

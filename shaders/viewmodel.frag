@@ -1,15 +1,13 @@
 #version 330
 
-in vec4 vCol;
-in vec2 texCoord0;
-in vec3 Normal;
-in vec3 FragPos;
+in vec2 TexCoord0;
+in vec3 Normal0;
+in vec3 FragPos0;
 flat in ivec4 BoneIDs0;
 in vec4 Weights0;
 
 out vec4 color;
 
-uniform sampler2D shadowMap;
 uniform sampler2D diffuseTexture;
 
 const int MAX_POINT_LIGHTS = 3;
@@ -69,6 +67,9 @@ uniform PointLight pointLights[MAX_POINT_LIGHTS];
 uniform Spotlight spotLights[MAX_SPOT_LIGHTS];
 uniform DirectionalLight directionalLight;
 
+uniform int activeBoneIndex;
+
+uniform sampler2D theTexture;
 uniform Material material;
 
 uniform vec3 eyePosition;
@@ -77,7 +78,7 @@ vec4 CalcLightByDirection(Light light, vec3 direction)
 {
 	vec4 ambientColor = vec4(light.color, 1.0f) * light.ambientIntensity;
 
-	float diffuseFactor = max(dot(normalize(Normal) , normalize(direction)), 0.0f);
+	float diffuseFactor = max(dot(normalize(Normal0) , normalize(direction)), 0.0f);
 	vec4 diffuseColor = vec4(light.color, 1.0f) * light.diffuseIntensity * diffuseFactor;
 
 	vec4 specularColor = vec4(0,0,0,0);
@@ -86,8 +87,8 @@ vec4 CalcLightByDirection(Light light, vec3 direction)
 	{
         //this code makes it so if you look at a wall at an angle
         //you will not see the light reflecting back to your eye
-		vec3 fragToEye = normalize(eyePosition - FragPos);
-		vec3 reflectedVertex = normalize(reflect(direction, normalize(Normal)));
+		vec3 fragToEye = normalize(eyePosition - FragPos0);
+		vec3 reflectedVertex = normalize(reflect(direction, normalize(Normal0)));
 
 		float specularFactor = dot(fragToEye, reflectedVertex);
 		if (specularFactor > 0.0f)
@@ -106,7 +107,7 @@ vec4 CalcDirectionalLight()
 
 vec4 CalcPointLight(PointLight pLight)
 {
-	vec3 direction = FragPos - pLight.position;
+	vec3 direction = FragPos0 - pLight.position;
 		float distance = length(direction);
 		direction = normalize(direction);
 
@@ -119,7 +120,7 @@ vec4 CalcPointLight(PointLight pLight)
 
 vec4 CalcSpotLight(Spotlight sLight)
 {
-	vec3 rayDirection = normalize(FragPos - sLight.base.position);
+	vec3 rayDirection = normalize(FragPos0 - sLight.base.position);
 	float slFactor = dot(rayDirection, sLight.direction);
 
     float theta = dot(rayDirection, sLight.direction);
@@ -161,23 +162,31 @@ vec4 CalcPointLights()
 	return totalColor;
 }
 
+vec4 debug(){
+    vec4 color = vec4(1.0,1.0,1.0,1.0);
+	bool found = false;
 
-float ShadowCalculation(vec4 fragPosLightSpace)
-{
-    // perform perspective divide
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
-    // transform to [0,1] range
-    projCoords = projCoords * 0.5 + 0.5;
-    // get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
-    float closestDepth = texture(shadowMap, projCoords.xy).r; 
-    // get depth of current fragment from light's perspective
-    float currentDepth = projCoords.z;
-    // check whether current frag pos is in shadow
-	float bias = max(0.05 * (1.0 - dot(Normal, spotLights[0].direction)), 0.005); 
-	float shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;  
+    for (int i = 0 ; i < 4 ; i++) {
+        if (BoneIDs0[i] == activeBoneIndex) {
+           if (Weights0[i] >= 0.7) {
+               color = vec4(1.0, 0.0, 0.0, 0.0) * Weights0[i];
+           } else if (Weights0[i] >= 0.4 && Weights0[i] <= 0.6) {
+               color = vec4(0.0, 1.0, 0.0, 0.0) * Weights0[i];
+           } else if (Weights0[i] >= 0.1) {
+               color = vec4(1.0, 1.0, 0.0, 0.0) * Weights0[i];
+           }
 
-    return shadow;
+           found = true;
+           break;
+        }
+    }
+
+    if (!found ) {
+         color = vec4(1.0,1.0,1.0,1.0) * vec4(0.0001) + vec4(0.0, 0.0, 1.0, 0.0);
+    }
+	return color;
 }
+
 void main()
 {
 	vec4 finalColor = CalcDirectionalLight();
@@ -185,13 +194,9 @@ void main()
 	finalColor += CalcSpotLights();
     // 10% ambient light in case there is not enough light
     //finalColor += vec4(0.1, 0.1, 0.1, 0.0);
-	vec3 textureColor = texture(diffuseTexture, fs_in.TexCoords).rgb;
-	//SHADOW
-	float shadow = ShadowCalculation(fs_in.FragPosLightSpace);                      
-    vec3 lighting = (1.0 - shadow) * textureColor;    
-    //lighting = vec3(shadow);
-    color = vec4(lighting, 1.0) * finalColor;
-
+	vec3 textureColor = texture(diffuseTexture, TexCoord0).rgb;
+	
+	color = vec4(textureColor, 1.0) * finalColor;
     //uncomment to check normals
     //color = vec4(normalize(Normal) * 0.5 + 0.5, 1.0);
 

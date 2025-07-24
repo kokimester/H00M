@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <print>
 
 #include <GLFW/glfw3.h>
 
@@ -15,6 +16,7 @@
 #include "PointLight.h"
 #include "Spotlight.h"
 
+
 class Shader {
 private:
   GLuint id;
@@ -23,6 +25,10 @@ private:
 
   int pointLightCount;
   int spotLightCount;
+
+  static constexpr size_t MAX_BONE_COUNT = 200;
+
+  std::array<GLint,MAX_BONE_COUNT> m_boneLocation = {0};
 
   struct {
     GLuint uniformColor;
@@ -58,12 +64,19 @@ public:
   Shader();
   ~Shader() { glDeleteProgram(id); }
 
+  int getID() const { return id; }
+
   int compile_and_link(const char *vertexFile, const char *fragmentFile);
 
   void use();
   void unuse();
 
   void clearShader();
+
+  //Bones
+  void setupBones();
+  void setBoneTransform(GLint Index, const glm::mat4& Transform);
+  //Bones
 
   void setSpotLights(Spotlight *arrayToSet, unsigned int spotLightCount);
   void setPointLights(PointLight *arrayToSet, unsigned int lightCount);

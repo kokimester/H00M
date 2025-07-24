@@ -1,8 +1,10 @@
 #version 330
 
-layout (location=0) in vec3 pos;
-layout (location=1) in vec2 tex;
-layout (location=2) in vec3 norm;
+layout (location = 0) in vec3 pos;
+layout (location = 1) in vec2 tex;
+layout (location = 2) in vec3 norm;
+layout (location = 3) in ivec4 BoneIDs;
+layout (location = 4) in vec4 Weights;
 
 out vec4 vCol;
 out vec2 texCoord0;
@@ -40,10 +42,6 @@ void main()
     vs_out.FragPosLightSpace = lightSpaceMatrix * vec4(vs_out.FragPos, 1.0);
 	//SHADOW
 
-    //problem is we are smooth shading a hard edged shape
 	Normal = mat3(transpose(inverse(model))) * norm;
-    // uncomment for normalizing
-    // Normal = normalize(mat3(transpose(inverse(mat3(model)))) * norm);
-
 	FragPos = (model * vec4 (pos, 1.0)).xyz;
 }

@@ -2,6 +2,8 @@
 build/
 .cache/
 .vscode/
+models/
+textures/
 *.d
 
 # Compiled Object files

@@ -1,4 +1,5 @@
 #include "Window.h"
+#include <print>
 
 void Window::createCallbacks() {
   glfwSetKeyCallback(mainWindow, handleKeys);
@@ -68,7 +69,7 @@ int Window::Initialise() {
 
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
 
-  glfwWindowHint(GLFW_FLOATING, GL_TRUE);
+  glfwWindowHint(GLFW_FLOATING, GL_FALSE);
 
   GLFWmonitor *monitor = NULL;
   if (fullScreen) {
@@ -117,10 +118,7 @@ int Window::Initialise() {
   /*   return 1; */
   /* } */
 
-  /* glEnable(GL_DEPTH_TEST); */
-
-  std::cout << "Setting viewport to: " << bufferWidth << "x" << bufferHeight
-            << std::endl;
+  std::println("Setting viewport: {} x {}",bufferWidth, bufferHeight);
   glViewport(0, 0, bufferWidth, bufferHeight);
 
   glfwSetWindowUserPointer(mainWindow, this);
