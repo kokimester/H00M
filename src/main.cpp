@@ -395,16 +395,16 @@ int main()
 
     // light source
     DirectionalLight mainLight =
-        DirectionalLight({1.0f, 1.0f, 1.0f}, 0.3f, 0.4f, {0.0f, -1.0f, -1.0f});
+        DirectionalLight({1.0f, 1.0f, 1.0f}, 0.5f, 0.7f, {0.0f, -1.0f, -1.0f});
     PointLight pointLights[MAX_POINT_LIGHTS];
     Spotlight spotLights[MAX_SPOT_LIGHTS];
 
     unsigned int pointLightCount = 0;
     unsigned int spotLightCount = 0;
 
-    pointLights[0] = PointLight({0.0f, 0.0f, 1.0f}, 0.0f, 0.3f, 0.0f, 1.0f,
+    pointLights[0] = PointLight({1.0f, 1.0f, 1.0f}, 0.0f, 0.3f, 0.0f, 1.0f,
                                 0.0f, 0.3f, 0.2f, 0.1f);
-    /* pointLightCount++; */
+    pointLightCount++;
 
     pointLights[1] = PointLight({0.0f, 1.0f, 0.0f}, 0.0f, 0.3f, -4.0f, 2.0f,
                                 0.0f, 0.3f, 0.1f, 0.1f);
@@ -565,6 +565,7 @@ int main()
         std::cout << "Entity cap reached" << std::endl;
         return;
       }
+      std::println("Adding entity at: {} {} {}", tc.pos.x, tc.pos.y,tc.pos.z);
       entity cubeEntity = create_entity();
       componentRegistry.models.emplace(
           cubeEntity, model_component{model, mat, texture, defaultRotation});
@@ -591,13 +592,13 @@ int main()
       }
     };
 
-    addEntity(ak, dullMaterial, brickTexture,
-          transform_component{.pos = {0.0f, 1.0f, 0.0f},
-                              .vel = glm::vec3{0.f},
-                              .rot = {0.0f, 1.0f, 0.0f},
-                              .scale = glm::vec3{0.1f},
-                              .rotationInDegrees = 0.f,
-                              .rotationvel = 0.f});
+    // addEntity(ak, dullMaterial, brickTexture,
+    //       transform_component{.pos = {0.0f, 1.0f, 0.0f},
+    //                           .vel = glm::vec3{0.f},
+    //                           .rot = {0.0f, 1.0f, 0.0f},
+    //                           .scale = glm::vec3{0.1f},
+    //                           .rotationInDegrees = 0.f,
+    //                           .rotationvel = 0.f});
 
     addEntity(cube, dullMaterial, brickTexture,
               transform_component{.pos = {-10.0f, -2.0005f, -10.0f},
@@ -725,8 +726,8 @@ int main()
       //----Lighting data----
       //----Lighting data----
       viewmodelShader.setDirectionalLight(mainLight);
-      viewmodelShader.setPointLights(pointLights, 0);
-      viewmodelShader.setSpotLights(spotLights, 0);
+      viewmodelShader.setPointLights(pointLights, pointLightCount);
+      viewmodelShader.setSpotLights(spotLights, spotLightCount);
       //----Lighting data----
 
       // ----Shadow pass-----
@@ -776,6 +777,7 @@ int main()
       }
       static bool currentlyInAnimation = false;
       static float maxAnimationTime = 1.f;
+      //reloading
       if (keys[GLFW_KEY_R])
       {
         ak.SetActiveAnimation(0);
@@ -786,13 +788,18 @@ int main()
         }
         keys[GLFW_KEY_R] = false;
       }
-      if (keys[GLFW_KEY_SPACE])
+      //shooting
+      pointLights[0].setPos(camera.getCameraPosition()+0.5f * camera.getCameraFront());
+      if (keys[GLFW_KEY_Q])
       {
         if(!currentlyInAnimation){
           ak.SetActiveAnimation(2);
           startTime = now;
           currentlyInAnimation = true;
           maxAnimationTime = 0.25f;
+          pointLightCount = 1;
+          auto plPos = pointLights[0].getPos();
+          std::println("Adding muzzle flash at: {} {} {}",plPos.x,plPos.y,plPos.z);
         }
       }
       float AnimationTimeSec = 0.f;
@@ -800,6 +807,7 @@ int main()
         AnimationTimeSec = now - startTime;
       }else{
         AnimationTimeSec = 0.f;
+        pointLightCount = 0;
       }
       if(AnimationTimeSec > maxAnimationTime){
         currentlyInAnimation = false;
@@ -829,9 +837,9 @@ int main()
       glClear(GL_DEPTH_BUFFER_BIT);
       //glDisable(GL_DEPTH_TEST);
       auto modelMatrix = glm::mat4{1.f};
-      auto scale = glm::vec3{0.01f};
+      auto scale = glm::vec3{0.1f};
       modelMatrix = glm::translate(modelMatrix, glm::vec3{0.f,0.f,0.f});
-      //modelMatrix = glm::scale(modelMatrix, scale);
+      modelMatrix = glm::scale(modelMatrix, scale);
       modelMatrix = glm::rotate(modelMatrix, glm::radians(-180.f), glm::vec3{0.f,1.f,0.f});
       viewmodelShader.setMat4fv(modelMatrix,"model");
       //viewmodelShader.setMat4fv(glm::mat4(1.f),"view");
@@ -869,7 +877,7 @@ int main()
                          glm::to_string(camera.getCameraPosition());
           cameraFacingStr = std::string("CAM facing: ") +
                             glm::to_string(camera.getCameraFront());
-          cameraFacingStr =
+          entityCountStr =
               std::string("Entities: ") + std::to_string(MAX_ENTITY);
         }
         //TODO: Fix text render, currently not drawing on the skybox
@@ -882,7 +890,7 @@ int main()
                                 glm::vec3(1.0f, 1.0f, 1.0f));
         textrenderer.renderText(cameraFacingStr, 0.0f, SCR_HEIGHT - 4 * 24,
                                 0.5f, glm::vec3(1.0f, 1.0f, 1.0f));
-        textrenderer.renderText(entityCountStr, 0.0f, SCR_HEIGHT - 4 * 24, 0.5f,
+        textrenderer.renderText(entityCountStr, 0.0f, SCR_HEIGHT - 5 * 24, 0.5f,
                                 glm::vec3(1.0f, 1.0f, 1.0f));
         // ------ ADDING TEXT RENDER HERE ----------
       }

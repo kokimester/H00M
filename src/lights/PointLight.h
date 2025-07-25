@@ -14,6 +14,7 @@ public:
              float pExp);
   ~PointLight() {}
 
+  void setPos(const glm::vec3& newPos) { position = newPos;}
   glm::vec3 getPos() const { return position; }
   float getConst() const { return constant; }
   float getLinear() const { return linear; }
