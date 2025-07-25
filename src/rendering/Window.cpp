@@ -13,14 +13,15 @@ void Window::handleKeys(GLFWwindow *window, int key, [[maybe_unused]] int code,
   if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
     glfwSetWindowShouldClose(window, GLFW_TRUE);
   }
-  if (key >= 0 && key < 1024) {
-    if (action == GLFW_PRESS) {
-      theWindow->keys[key] = true;
-      /* printf("Pressed: %d\n", key); */
-    } else if (action == GLFW_RELEASE) {
-      theWindow->keys[key] = false;
-      /* printf("Released: %d\n", key); */
-    }
+  if (!(key >= 0 && key < 1024)) {
+    return;
+  }
+  if (action == GLFW_PRESS) {
+    theWindow->keys[key] = true;
+    /* printf("Pressed: %d\n", key); */
+  } else if (action == GLFW_RELEASE) {
+    theWindow->keys[key] = false;
+    /* printf("Released: %d\n", key); */
   }
 }
 
@@ -69,7 +70,14 @@ int Window::Initialise() {
 
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
 
+#ifdef __linux__
+  glfwWindowHint(GLFW_FLOATING, GL_TRUE);
+  // linux code goes here
+#elif _WIN32
+  // windows code goes here
   glfwWindowHint(GLFW_FLOATING, GL_FALSE);
+#else
+#endif
 
   GLFWmonitor *monitor = NULL;
   if (fullScreen) {
@@ -118,7 +126,7 @@ int Window::Initialise() {
   /*   return 1; */
   /* } */
 
-  std::println("Setting viewport: {} x {}",bufferWidth, bufferHeight);
+  std::println("Setting viewport: {} x {}", bufferWidth, bufferHeight);
   glViewport(0, 0, bufferWidth, bufferHeight);
 
   glfwSetWindowUserPointer(mainWindow, this);

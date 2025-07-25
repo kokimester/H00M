@@ -19,6 +19,9 @@ uniform mat4 projection;
 uniform mat4 view;
 uniform mat4 gBones[200];
 
+//used to fix fragpos for lighting
+uniform mat4 playerLocation;
+
 //SHADOW
 /*
 out VS_OUT {
@@ -39,11 +42,11 @@ void main()
     BoneTransform     += gBones[BoneIDs[3]] * Weights[3];
     vec4 PosL = BoneTransform * vec4(pos, 1.0);
     mat4 gWVP = projection * model;
-    //mat4 gWVP = projection * view * model;
+    //gWVP = projection * view * model;
     gl_Position = gWVP * PosL;
     TexCoord0 = tex;
     Normal0 = vec3(view * vec4(norm,1.0));
-    FragPos0 = pos;
+    FragPos0 = vec3(playerLocation*vec4(pos,1.0));
     BoneIDs0 = BoneIDs;
     Weights0 = Weights;
     /*

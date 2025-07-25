@@ -5,8 +5,8 @@
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
-#include <print>
 #include <map>
+#include <print>
 #include <string>
 
 #include <cmath>
@@ -60,21 +60,17 @@ void errorMessageCallback([[maybe_unused]] GLenum source,
                           [[maybe_unused]] GLenum severity,
                           [[maybe_unused]] GLsizei length,
                           [[maybe_unused]] const GLchar *message,
-                          [[maybe_unused]] const void *userParam)
-{
-  //std::println("errorMessageCallback was called with message: {}",message);
+                          [[maybe_unused]] const void *userParam) {
+  // std::println("errorMessageCallback was called with message: {}",message);
 }
-
 
 int validateShaderFiles(const fs::path &projectPath, const fs::path &shaderDir,
                         const fs::path &vertexShaderFile,
-                        const fs::path &fragmentShaderFile, Shader &shader)
-{
+                        const fs::path &fragmentShaderFile, Shader &shader) {
   auto vertexPath = projectPath / shaderDir / vertexShaderFile;
   auto fragmentPath = projectPath / shaderDir / fragmentShaderFile;
   if (!std::filesystem::exists(vertexPath) ||
-      !std::filesystem::exists(fragmentPath))
-  {
+      !std::filesystem::exists(fragmentPath)) {
     std::cout << "ERROR::SHADER::MODEL Failed to load shader files."
               << std::endl;
     std::cout << vertexPath.string() << std::endl;
@@ -84,8 +80,7 @@ int validateShaderFiles(const fs::path &projectPath, const fs::path &shaderDir,
   std::string vertexFileName = vertexPath.string();
   std::string fragmentFileName = fragmentPath.string();
   if (shader.compile_and_link(vertexFileName.c_str(),
-                              fragmentFileName.c_str()))
-  {
+                              fragmentFileName.c_str())) {
     std::cout << "Shader compilation or linking error!\n";
     return -2;
   }
@@ -94,16 +89,14 @@ int validateShaderFiles(const fs::path &projectPath, const fs::path &shaderDir,
 
 using entity = std::size_t;
 entity MAX_ENTITY = 0;
-entity create_entity()
-{
+entity create_entity() {
   static entity entities = 0;
   ++entities;
   MAX_ENTITY = entities;
   return entities;
 }
 
-struct transform_component
-{
+struct transform_component {
   glm::vec3 pos{0.f};
   glm::vec3 vel{0.f};
   glm::vec3 rot{0.f};
@@ -112,8 +105,7 @@ struct transform_component
   GLfloat rotationvel = 0.f;
 };
 
-struct model_component
-{
+struct model_component {
   glm::mat4 modelMat{1.f};
   glm::mat4 modelDefaultOrientationRotation{1.f};
   Model &model;
@@ -125,21 +117,16 @@ struct model_component
         material{material}, texture{texture} {}
 };
 
-struct registry
-{
+struct registry {
   std::unordered_map<entity, model_component> models;
   std::unordered_map<entity, transform_component> transforms;
 };
 
-struct model_system
-{
+struct model_system {
 
-  void update(registry &reg)
-  {
-    for (std::size_t e = 1; e <= MAX_ENTITY; ++e)
-    {
-      if (reg.models.contains(e) && reg.transforms.contains(e))
-      {
+  void update(registry &reg) {
+    for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
+      if (reg.models.contains(e) && reg.transforms.contains(e)) {
         glm::mat4 &modelMatrix = reg.models.at(e).modelMat;
         modelMatrix = glm::mat4{1.f};
         auto &modelPosition = reg.transforms.at(e).pos;
@@ -158,12 +145,9 @@ struct model_system
     }
   }
 
-  void render(registry &reg, Shader &shader)
-  {
-    for (std::size_t e = 1; e <= MAX_ENTITY; ++e)
-    {
-      if (reg.models.contains(e))
-      {
+  void render(registry &reg, Shader &shader) {
+    for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
+      if (reg.models.contains(e)) {
         auto &modelMatrix = reg.models.at(e).modelMat;
         auto &model = reg.models.at(e).model;
         auto &material = reg.models.at(e).material;
@@ -180,14 +164,10 @@ struct model_system
   }
 };
 
-struct transform_system
-{
-  void update(registry &reg, float dt)
-  {
-    for (std::size_t e = 1; e <= MAX_ENTITY; ++e)
-    {
-      if (reg.transforms.contains(e))
-      {
+struct transform_system {
+  void update(registry &reg, float dt) {
+    for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
+      if (reg.transforms.contains(e)) {
         reg.transforms[e].pos += reg.transforms[e].vel * dt;
         reg.transforms[e].rotationInDegrees +=
             reg.transforms[e].rotationvel * dt;
@@ -200,8 +180,7 @@ struct transform_system
 const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
 unsigned int depthMapFBO;
 unsigned int depthMap;
-void setupShadowTexture()
-{
+void setupShadowTexture() {
   glGenFramebuffers(1, &depthMapFBO);
   glGenTextures(1, &depthMap);
   glBindTexture(GL_TEXTURE_2D, depthMap);
@@ -221,8 +200,10 @@ void setupShadowTexture()
 }
 
 // TODO: handle more light sources
-void render(model_system &ms, registry &componentRegistry, Shader &shadow_shader, Shader &shader, const glm::mat4 &lightSpaceMatrix, unsigned int depthMapFBO, unsigned int depthMap)
-{
+void render(model_system &ms, registry &componentRegistry,
+            Shader &shadow_shader, Shader &shader,
+            const glm::mat4 &lightSpaceMatrix, unsigned int depthMapFBO,
+            unsigned int depthMap) {
   // 1. first render to depth map
   shadow_shader.setMat4fv(lightSpaceMatrix, "lightSpaceMatrix");
   glCullFace(GL_FRONT);
@@ -245,16 +226,15 @@ void render(model_system &ms, registry &componentRegistry, Shader &shadow_shader
   ms.render(componentRegistry, shader);
 };
 
-int loadshader(std::filesystem::path projectPath, const std::string &shaderDirStr, const std::string &shader_name, Shader &shader)
-{
+int loadshader(std::filesystem::path projectPath,
+               const std::string &shaderDirStr, const std::string &shader_name,
+               Shader &shader) {
   std::string vertexFileExt = ".vert";
   std::string fragFileExt = ".frag";
   auto shaderDir = std::filesystem::path(shaderDirStr);
   auto vFile = std::filesystem::path(shader_name + vertexFileExt);
   auto fFile = std::filesystem::path(shader_name + fragFileExt);
-  if (validateShaderFiles(projectPath, shaderDir, vFile,
-                          fFile, shader))
-  {
+  if (validateShaderFiles(projectPath, shaderDir, vFile, fFile, shader)) {
     std::cout << "Error occured while validating shader files!\n";
     return -1;
   }
@@ -262,16 +242,13 @@ int loadshader(std::filesystem::path projectPath, const std::string &shaderDirSt
   return 0;
 };
 
-bool isValidProjectPath(std::filesystem::path &projectPath)
-{
+bool isValidProjectPath(std::filesystem::path &projectPath) {
   std::string_view projectName = "H00M";
   while (projectPath != projectPath.root_path() &&
-         projectPath.filename() != projectName)
-  {
+         projectPath.filename() != projectName) {
     projectPath = projectPath.parent_path();
   }
-  if (projectPath == projectPath.root_path())
-  {
+  if (projectPath == projectPath.root_path()) {
     std::cout << "ERROR::FILESYSTEM: Failed to find project directory!"
               << std::endl;
     return false;
@@ -279,25 +256,24 @@ bool isValidProjectPath(std::filesystem::path &projectPath)
   return true;
 }
 
-unsigned int loadCubemap(const std::array<std::string_view, 6>& faces,const fs::path& skyBoxPath)
-{
+unsigned int loadCubemap(const std::array<std::string_view, 6> &faces,
+                         const fs::path &skyBoxPath) {
   unsigned int textureID;
   glGenTextures(1, &textureID);
   glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
 
   int width, height, nrChannels;
-  for (unsigned int i = 0; i < faces.size(); i++)
-  {
-    unsigned char *data = stbi_load(fs::path(skyBoxPath / faces[i]).string().c_str(), &width, &height, &nrChannels, 0);
-    if (data)
-    {
-      glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
-                   0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+  for (unsigned int i = 0; i < faces.size(); i++) {
+    unsigned char *data =
+        stbi_load(fs::path(skyBoxPath / faces[i]).string().c_str(), &width,
+                  &height, &nrChannels, 0);
+    if (data) {
+      glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height,
+                   0, GL_RGB, GL_UNSIGNED_BYTE, data);
       stbi_image_free(data);
-    }
-    else
-    {
-      std::cout << "Cubemap tex failed to load at path: " << faces[i] << std::endl;
+    } else {
+      std::cout << "Cubemap tex failed to load at path: " << faces[i]
+                << std::endl;
       stbi_image_free(data);
     }
   }
@@ -310,68 +286,43 @@ unsigned int loadCubemap(const std::array<std::string_view, 6>& faces,const fs::
   return textureID;
 }
 
-unsigned int loadSkybox(){
+unsigned int loadSkybox() {
 
   float skyboxVertices[] = {
-    // positions          
-    -1.0f,  1.0f, -1.0f,
-    -1.0f, -1.0f, -1.0f,
-     1.0f, -1.0f, -1.0f,
-     1.0f, -1.0f, -1.0f,
-     1.0f,  1.0f, -1.0f,
-    -1.0f,  1.0f, -1.0f,
+      // positions
+      -1.0f, 1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f,
+      1.0f,  -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f,
 
-    -1.0f, -1.0f,  1.0f,
-    -1.0f, -1.0f, -1.0f,
-    -1.0f,  1.0f, -1.0f,
-    -1.0f,  1.0f, -1.0f,
-    -1.0f,  1.0f,  1.0f,
-    -1.0f, -1.0f,  1.0f,
+      -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  -1.0f,
+      -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,
 
-     1.0f, -1.0f, -1.0f,
-     1.0f, -1.0f,  1.0f,
-     1.0f,  1.0f,  1.0f,
-     1.0f,  1.0f,  1.0f,
-     1.0f,  1.0f, -1.0f,
-     1.0f, -1.0f, -1.0f,
+      1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,  1.0f,
+      1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f, -1.0f,
 
-    -1.0f, -1.0f,  1.0f,
-    -1.0f,  1.0f,  1.0f,
-     1.0f,  1.0f,  1.0f,
-     1.0f,  1.0f,  1.0f,
-     1.0f, -1.0f,  1.0f,
-    -1.0f, -1.0f,  1.0f,
+      -1.0f, -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,  1.0f,  1.0f,
+      1.0f,  1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,
 
-    -1.0f,  1.0f, -1.0f,
-     1.0f,  1.0f, -1.0f,
-     1.0f,  1.0f,  1.0f,
-     1.0f,  1.0f,  1.0f,
-    -1.0f,  1.0f,  1.0f,
-    -1.0f,  1.0f, -1.0f,
+      -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,
+      1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f,
 
-    -1.0f, -1.0f, -1.0f,
-    -1.0f, -1.0f,  1.0f,
-     1.0f, -1.0f, -1.0f,
-     1.0f, -1.0f, -1.0f,
-    -1.0f, -1.0f,  1.0f,
-     1.0f, -1.0f,  1.0f
-};
-    unsigned int skyboxVAO, skyboxVBO;
-    glGenVertexArrays(1, &skyboxVAO);
-    glGenBuffers(1, &skyboxVBO);
-    glBindVertexArray(skyboxVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    return skyboxVAO;
+      -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f,
+      1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f};
+  unsigned int skyboxVAO, skyboxVBO;
+  glGenVertexArrays(1, &skyboxVAO);
+  glGenBuffers(1, &skyboxVBO);
+  glBindVertexArray(skyboxVAO);
+  glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices,
+               GL_STATIC_DRAW);
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+  return skyboxVAO;
 }
 
-int main()
-{
+int main() {
   {
     Window window = Window(SCR_WIDTH, SCR_HEIGHT, GLFW_FALSE);
-    if(window.Initialise()){
+    if (window.Initialise()) {
       std::println("Window failed to initialize");
       return -1;
     }
@@ -430,8 +381,7 @@ int main()
 
     // Check path
     auto projectPath = std::filesystem::current_path();
-    if (!isValidProjectPath(projectPath))
-    {
+    if (!isValidProjectPath(projectPath)) {
       std::cout << "Error occured while validating project path!\n";
       return -1;
     }
@@ -444,28 +394,33 @@ int main()
     Model ak;
     Model arm;
     fs::path modelDir = "models";
-    try
-    {
-      // cube.loadModel(projectPath / modelDir / std::filesystem::path("cube-tex.obj"), true);
-      // pyramid.loadModel(projectPath / modelDir / std::filesystem::path("pyramid2.obj"), true);
-      // sphere.loadModel(projectPath / modelDir / std::filesystem::path("sphere.obj"), true);
-      // ak.loadModel(projectPath / modelDir / std::filesystem::path("ak47.glb"), false);
-      //arm.loadModel(projectPath / modelDir / std::filesystem::path("viewmodel.obj"), false);
-    }
-    catch (const std::invalid_argument &err)
-    {
+    try {
+      // cube.loadModel(projectPath / modelDir /
+      // std::filesystem::path("cube-tex.obj"), true);
+      // pyramid.loadModel(projectPath / modelDir /
+      // std::filesystem::path("pyramid2.obj"), true);
+      // sphere.loadModel(projectPath / modelDir /
+      // std::filesystem::path("sphere.obj"), true); ak.loadModel(projectPath /
+      // modelDir / std::filesystem::path("ak47.glb"), false);
+      // arm.loadModel(projectPath / modelDir /
+      // std::filesystem::path("viewmodel.obj"), false);
+    } catch (const std::invalid_argument &err) {
       std::cerr << err.what() << std::endl;
     }
     bool modelsLoaded = true;
     std::println("Loading cube");
-    modelsLoaded &= cube.LoadMesh(projectPath / modelDir / std::filesystem::path("cube-tex.obj"));
+    modelsLoaded &= cube.LoadMesh(projectPath / modelDir /
+                                  std::filesystem::path("cube-tex.obj"));
     std::println("Loading pyramid");
-    modelsLoaded &= pyramid.LoadMesh(projectPath / modelDir / std::filesystem::path("pyramid2.obj"));
+    modelsLoaded &= pyramid.LoadMesh(projectPath / modelDir /
+                                     std::filesystem::path("pyramid2.obj"));
     std::println("Loading sphere");
-    modelsLoaded &= sphere.LoadMesh(projectPath / modelDir / std::filesystem::path("sphere.obj"));
+    modelsLoaded &= sphere.LoadMesh(projectPath / modelDir /
+                                    std::filesystem::path("sphere.obj"));
     std::println("Loading viewmodel");
-    modelsLoaded &= ak.LoadMesh(projectPath / modelDir / std::filesystem::path("ak47.gltf"));
-    if(modelsLoaded == false){
+    modelsLoaded &= ak.LoadMesh(projectPath / modelDir /
+                                std::filesystem::path("ak47.gltf"));
+    if (modelsLoaded == false) {
       std::println("Models failed to load!");
       return -1;
     }
@@ -479,6 +434,8 @@ int main()
     plainTexture.loadTexture();
     Texture whiteTexture("../textures/white.png");
     whiteTexture.loadTexture();
+    Texture muzzleFlashTexture("../textures/muzzleflash.png");
+    muzzleFlashTexture.loadTexture();
     std::cerr << "Loaded all textures" << std::endl;
 
     // material
@@ -492,6 +449,7 @@ int main()
     Shader debugDepthQuad;
     Shader skyboxShader;
     Shader viewmodelShader;
+    Shader muzzleFlashShader;
     // TODO: collect directories in one place
     std::string shaderDir = "shaders";
 
@@ -507,6 +465,8 @@ int main()
       return -5;
     if (loadshader(projectPath, shaderDir, "viewmodel", viewmodelShader))
       return -6;
+    if (loadshader(projectPath, shaderDir, "muzzle", muzzleFlashShader))
+      return -7;
 
     glm::mat4 projection(1.f);
     projection =
@@ -523,8 +483,7 @@ int main()
     auto textVertexPath = projectPath / shaderDir / textVertexShaderFile;
     auto textFragmentPath = projectPath / shaderDir / textFragmentShaderFile;
     if (!std::filesystem::exists(textVertexPath) ||
-        !std::filesystem::exists(textFragmentPath))
-    {
+        !std::filesystem::exists(textFragmentPath)) {
       std::cout << "ERROR::SHADER::TEXT Failed to load shader files."
                 << std::endl;
       std::cout << textVertexPath.string() << std::endl;
@@ -535,14 +494,12 @@ int main()
     auto fontDir = std::filesystem::path("fonts");
     auto fontFile = std::filesystem::path("Consolas-Bold.ttf");
     auto defaultFontPath = projectPath / fontDir / fontFile;
-    if (!std::filesystem::exists(defaultFontPath))
-    {
+    if (!std::filesystem::exists(defaultFontPath)) {
       std::cout << "ERROR::FREETYPE: Failed to load font_name" << std::endl;
       return -1;
     }
 
-    if (textrenderer.init(textVertexPath, textFragmentPath, defaultFontPath))
-    {
+    if (textrenderer.init(textVertexPath, textFragmentPath, defaultFontPath)) {
       std::cout << "ERROR::TEXTRENDERER: Failed to init FontRenderer"
                 << std::endl;
       return -1;
@@ -558,29 +515,24 @@ int main()
     // TODO: create component addition one-by-one instead
     auto addEntity = [&](Model &model, Material &mat, Texture &texture,
                          transform_component tc = {},
-                         glm::mat4 defaultRotation = {1.f})
-    {
-      if (MAX_ENTITY >= 20000)
-      {
+                         glm::mat4 defaultRotation = {1.f}) {
+      if (MAX_ENTITY >= 20000) {
         std::cout << "Entity cap reached" << std::endl;
         return;
       }
-      std::println("Adding entity at: {} {} {}", tc.pos.x, tc.pos.y,tc.pos.z);
+      std::println("Adding entity at: {} {} {}", tc.pos.x, tc.pos.y, tc.pos.z);
       entity cubeEntity = create_entity();
       componentRegistry.models.emplace(
           cubeEntity, model_component{model, mat, texture, defaultRotation});
       componentRegistry.transforms[cubeEntity] = tc;
     };
 
-    auto addEntities = [&](unsigned int count = 100)
-    {
-      if (MAX_ENTITY >= 20000)
-      {
+    auto addEntities = [&](unsigned int count = 100) {
+      if (MAX_ENTITY >= 20000) {
         std::cout << "Entity cap reached" << std::endl;
         return;
       }
-      for (unsigned int i = 0; i < count; ++i)
-      {
+      for (unsigned int i = 0; i < count; ++i) {
         addEntity(cube, dullMaterial, brickTexture,
                   transform_component{
                       .pos = {(rand() % 40) - 20, 10.0f, (rand() % 40) - 20},
@@ -642,13 +594,16 @@ int main()
                                     .rotationvel = 0.f});
     }
 
+    // TODO: set the numbers based on a common header file
     shader.set1i(0, "diffuseTexture");
     shader.set1i(1, "shadowMap");
-    
+
     viewmodelShader.set1i(0, "diffuseTexture");
 
+    muzzleFlashShader.set1i(0, "diffuseTexture");
+
     debugDepthQuad.set1i(0, "depthMap");
-    skyboxShader.set1i(0,"skybox");
+    skyboxShader.set1i(0, "skybox");
 
     viewmodelShader.setupBones();
 
@@ -657,20 +612,29 @@ int main()
     fs::path textureDir("textures");
     fs::path skyboxDir("skybox");
     fs::path skyBoxPath = projectPath / textureDir / skyboxDir;
-    std::array<std::string_view, 6> cubemapFaces =
-    {
-      "right.jpg",
-      "left.jpg",
-      "top.jpg",
-      "bottom.jpg",
-      "front.jpg",
-      "back.jpg"};
-      
-    unsigned int cubemapTexture = loadCubemap(cubemapFaces,skyBoxPath);
-    
+    std::array<std::string_view, 6> cubemapFaces = {"right.jpg", "left.jpg",
+                                                    "top.jpg",   "bottom.jpg",
+                                                    "front.jpg", "back.jpg"};
+
+    unsigned int cubemapTexture = loadCubemap(cubemapFaces, skyBoxPath);
+
     unsigned int skyboxVAO = loadSkybox();
     GLfloat startTime = glfwGetTime();
     GLint activeBoneIndex = 0;
+
+    // create muzzleflash mesh
+
+    std::vector<unsigned int> muzzleIndices{0, 1, 2, 1, 2, 3};
+    std::vector<GLfloat> muzzleVertices{
+
+        -1.0f, 0.0f, -1.f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f,
+        1.0f,  0.0f, -1.f, 1.0f, 0.0f, 0.0f, -1.0f, 0.0f,
+        -1.0f, 0.0f, 1.f,  0.0f, 1.0f, 0.0f, -1.0f, 0.0f,
+
+        1.0f,  0.0f, 1.f,  1.0f, 1.0f, 0.0f, -1.0f, 0.0f};
+
+    Mesh muzzleFlashMesh;
+    muzzleFlashMesh.createMesh(muzzleVertices, muzzleIndices);
 
     while (!window.getShouldClose()) // returns true if window is closed
     {
@@ -691,17 +655,15 @@ int main()
       camera.keyControl(window.getKeys(), deltaTime);
       camera.mouseControl(window.getXChange(), window.getYChange());
 
-      if (camera.isFlashlightOn())
-      {
+      if (camera.isFlashlightOn()) {
         spotLights[0].update(camera.getCameraPosition(),
                              camera.getCameraFront(), camera.getRight());
-      }
-      else
-      {
-        //spotLights[0].disable();
-        auto pos = glm::vec3(glm::cos(now / 2) * 5.f, 10.0f, glm::sin(now / 2) * 5.f);
-        spotLights[0].update(pos,
-                             glm::normalize(glm::vec3(0.f) - pos), camera.getRight());
+      } else {
+        // spotLights[0].disable();
+        auto pos =
+            glm::vec3(glm::cos(now / 2) * 5.f, 10.0f, glm::sin(now / 2) * 5.f);
+        spotLights[0].update(pos, glm::normalize(glm::vec3(0.f) - pos),
+                             camera.getRight());
       }
 
       // clear canvas
@@ -716,8 +678,6 @@ int main()
       shader.setMat4fv(view, "view");
       shader.setMat4fv(projection, "projection");
       //----Camera----
-
-
 
       //----Lighting data----
       shader.setDirectionalLight(mainLight);
@@ -735,15 +695,17 @@ int main()
 
       glm::mat4 lightProjection =
           glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
-      glm::mat4 lightView = glm::lookAt(-10.f * mainLight.getDirection(),
-                                        glm::vec3(0.0f, 0.0f, 0.0f),
-                                        glm::vec3(0.0f, 1.0f, 0.0f));
+      glm::mat4 lightView =
+          glm::lookAt(-10.f * mainLight.getDirection(),
+                      glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
       auto &flashlight = spotLights[0];
-      lightView = glm::lookAt(flashlight.getPos(), flashlight.getPos() + flashlight.getDirection(),
+      lightView = glm::lookAt(flashlight.getPos(),
+                              flashlight.getPos() + flashlight.getDirection(),
                               glm::vec3(0.f, 1.f, 0.f));
       glm::mat4 lightSpaceMatrix = lightProjection * lightView;
 
-      render(ms, componentRegistry, shadow_shader, shader, lightSpaceMatrix, depthMapFBO, depthMap);
+      render(ms, componentRegistry, shadow_shader, shader, lightSpaceMatrix,
+             depthMapFBO, depthMap);
 
       // debug quad
       //  debugDepthQuad.use();
@@ -768,57 +730,54 @@ int main()
       // ----Lighting pass-----
 
       auto keys = window.getKeys();
-      if (keys[GLFW_KEY_E])
-      {
-        //addEntities(1000);
+      if (keys[GLFW_KEY_E]) {
+        // addEntities(1000);
         activeBoneIndex = (activeBoneIndex + 1) % ak.NumBones();
         std::println("Active bone: {}", activeBoneIndex);
         keys[GLFW_KEY_E] = false;
       }
       static bool currentlyInAnimation = false;
       static float maxAnimationTime = 1.f;
-      //reloading
-      if (keys[GLFW_KEY_R])
-      {
+      // reloading
+      if (keys[GLFW_KEY_R]) {
         ak.SetActiveAnimation(0);
-        if(!currentlyInAnimation){
+        if (!currentlyInAnimation) {
           startTime = now;
           currentlyInAnimation = true;
           maxAnimationTime = 1.f;
         }
         keys[GLFW_KEY_R] = false;
       }
-      //shooting
-      pointLights[0].setPos(camera.getCameraPosition()+0.5f * camera.getCameraFront());
-      if (keys[GLFW_KEY_Q])
-      {
-        if(!currentlyInAnimation){
+      // shooting
+      pointLights[0].setPos(camera.getCameraPosition() +
+                            0.5f * camera.getCameraFront());
+      if (keys[GLFW_KEY_Q]) {
+        if (!currentlyInAnimation) {
           ak.SetActiveAnimation(2);
           startTime = now;
           currentlyInAnimation = true;
           maxAnimationTime = 0.25f;
           pointLightCount = 1;
           auto plPos = pointLights[0].getPos();
-          std::println("Adding muzzle flash at: {} {} {}",plPos.x,plPos.y,plPos.z);
+          /* std::println("Adding muzzle flash at: {} {}
+           * {}",plPos.x,plPos.y,plPos.z); */
         }
       }
       float AnimationTimeSec = 0.f;
-      if(currentlyInAnimation){
+      if (currentlyInAnimation) {
         AnimationTimeSec = now - startTime;
-      }else{
+      } else {
         AnimationTimeSec = 0.f;
         pointLightCount = 0;
       }
-      if(AnimationTimeSec > maxAnimationTime){
+      if (AnimationTimeSec > maxAnimationTime) {
         currentlyInAnimation = false;
       }
 
-      
-
-
       //----Skybox----
       // draw skybox as last
-      glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
+      glDepthFunc(GL_LEQUAL); // change depth function so depth test passes when
+                              // values are equal to depth buffer's content
       auto skyboxView = glm::mat4(glm::mat3(view));
       skyboxShader.setMat4fv(skyboxView, "view");
       skyboxShader.setMat4fv(projection, "projection");
@@ -834,38 +793,69 @@ int main()
       //----Skybox----
 
       //----Viewmodel rendering-----
+      //--Render muzzleflash--
+      if (ak.GetActiveAnimationIndex() == 2) {
+        if (currentlyInAnimation) {
+          auto muzzleTranslation = glm::mat4{1.f};
+          muzzleTranslation =
+              glm::translate(muzzleTranslation, glm::vec3{0.3f, -0.25f, -2.2f});
+          muzzleTranslation = glm::rotate(muzzleTranslation, glm::radians(90.f),
+                                          glm::vec3{1.f, 0.f, 0.f});
+          muzzleTranslation = glm::scale(muzzleTranslation, glm::vec3{0.3f});
+          muzzleFlashShader.setMat4fv(projection, "projection");
+          muzzleFlashShader.setMat4fv(view, "view");
+          muzzleFlashShader.setMat4fv(muzzleTranslation, "model");
+          muzzleFlashShader.set1f(AnimationTimeSec / maxAnimationTime,
+                                  "progress");
+
+          muzzleFlashShader.use();
+          glEnable(GL_BLEND);
+          glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+          muzzleFlashTexture.useTexture();
+          muzzleFlashShader.use();
+          muzzleFlashMesh.renderMesh();
+
+          glDisable(GL_BLEND);
+        }
+      }
+
+      //--Render muzzleflash--
       glClear(GL_DEPTH_BUFFER_BIT);
-      //glDisable(GL_DEPTH_TEST);
       auto modelMatrix = glm::mat4{1.f};
       auto scale = glm::vec3{0.1f};
-      modelMatrix = glm::translate(modelMatrix, glm::vec3{0.f,0.f,0.f});
+      modelMatrix = glm::translate(modelMatrix, glm::vec3{0.f, 0.f, 0.f});
       modelMatrix = glm::scale(modelMatrix, scale);
-      modelMatrix = glm::rotate(modelMatrix, glm::radians(-180.f), glm::vec3{0.f,1.f,0.f});
-      viewmodelShader.setMat4fv(modelMatrix,"model");
-      //viewmodelShader.setMat4fv(glm::mat4(1.f),"view");
-      viewmodelShader.setMat4fv(view,"view");
+      modelMatrix = glm::rotate(modelMatrix, glm::radians(-180.f),
+                                glm::vec3{0.f, 1.f, 0.f});
+      viewmodelShader.setMat4fv(modelMatrix, "model");
+      // viewmodelShader.setMat4fv(glm::mat4(1.f),"view");
+      viewmodelShader.setMat4fv(view, "view");
       viewmodelShader.setMat4fv(projection, "projection");
-      viewmodelShader.set1i(activeBoneIndex,"activeBoneIndex");
+      viewmodelShader.set1i(activeBoneIndex, "activeBoneIndex");
       viewmodelShader.use();
       viewmodelShader.useMaterial(shinyMaterial, "material.shininess",
-                            "material.specularIntensity");
+                                  "material.specularIntensity");
+      // set player translation for fragpos info
+      // TODO: this solution is not complete but for starters its enough
+      auto playerLocation = camera.getCameraPosition();
+      glm::mat4 playerLocationMat = glm::mat4{1.f};
+      playerLocationMat = glm::translate(playerLocationMat, playerLocation);
+      viewmodelShader.setMat4fv(playerLocationMat, "playerLocation");
       std::vector<glm::mat4> boneTransforms;
-      //static float AnimationTimeSec = 0;
+      // static float AnimationTimeSec = 0;
       ak.GetBoneTransforms(AnimationTimeSec, boneTransforms);
-      for (size_t i = 1 ; i < boneTransforms.size() ; i++) {
-        //boneTransforms[i] = glm::mat4{1.f};
+      for (size_t i = 1; i < boneTransforms.size(); i++) {
+        // boneTransforms[i] = glm::mat4{1.f};
         viewmodelShader.setBoneTransform(i, boneTransforms[i]);
       }
       viewmodelShader.use();
-      //brickTexture.useTexture();
+      // brickTexture.useTexture();
       ak.Render();
-      //glEnable(GL_DEPTH_TEST);
       //----Viewmodel rendering-----
 
       // handle performance debug output
       {
-        if (now - lastTimeTextWasRendered > 1 / textTickRate)
-        {
+        if (now - lastTimeTextWasRendered > 1 / textTickRate) {
           lastTimeTextWasRendered = now;
           timeStr = "Elapsed time: " +
                     std::to_string(static_cast<unsigned int>(
@@ -880,8 +870,8 @@ int main()
           entityCountStr =
               std::string("Entities: ") + std::to_string(MAX_ENTITY);
         }
-        //TODO: Fix text render, currently not drawing on the skybox
-        // ------ ADDING TEXT RENDER HERE ----------
+        // TODO: Fix text render, currently not drawing on the skybox
+        //  ------ ADDING TEXT RENDER HERE ----------
         textrenderer.renderText(timeStr, 0.0f, SCR_HEIGHT - 24, 0.5f,
                                 glm::vec3(1.0f, 1.0f, 1.0f));
         textrenderer.renderText(FPSStr, 0.0f, SCR_HEIGHT - 2 * 24, 0.5f,
@@ -894,7 +884,6 @@ int main()
                                 glm::vec3(1.0f, 1.0f, 1.0f));
         // ------ ADDING TEXT RENDER HERE ----------
       }
-      
 
       // buffer swap(double buffering)
       window.swapBuffers();
