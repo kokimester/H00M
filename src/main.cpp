@@ -1,5 +1,4 @@
 #define STB_IMAGE_IMPLEMENTATION
-/* #include "stb_image.h" */
 
 #include <cstddef>
 #include <cstdlib>
@@ -722,10 +721,6 @@ int main() {
       line_shader.setMat4fv(projection, "projection");
       line_shader.use();
       line.render();
-
-      // render all entities
-      /* ms.render(componentRegistry, shader); */
-      // render all entities
 
       // ----Lighting pass-----
 

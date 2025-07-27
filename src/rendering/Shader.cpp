@@ -49,7 +49,7 @@ GLuint Shader::addShader(const char *fileName,
               << std::endl;
   }
   // glAttachShader(id, theShader);
-  //std::println("Shader compilation: {}", fileName);
+  // std::println("Shader compilation: {}", fileName);
   handleGLerrors();
   return theShader;
 }
@@ -95,7 +95,7 @@ int Shader::linkProgram(GLuint vertexShader, GLuint fragmentShader) {
   }
   // uniformModel = glGetUniformLocation(id, "model");
   // uniformProjection = glGetUniformLocation(id, "projection");
-  //std::println("Shader linking");
+  // std::println("Shader linking");
   handleGLerrors();
   glUseProgram(0);
   return 0;
@@ -244,35 +244,34 @@ void Shader::useMaterial(const Material &toUse, const GLchar *shininessName,
   // set1f(toUse.getSpecularIntensity(), specularName);
 }
 
-void Shader::setupBones(){
+void Shader::setupBones() {
   use();
-  for (unsigned int i = 0 ; i < m_boneLocation.size() ; i++) {
-        char Name[256] = {0x00};
-        snprintf(Name, sizeof(Name), "gBones[%d]", i);
-        m_boneLocation[i] = glGetUniformLocation(id,Name);
-        if (m_boneLocation[i] == -1) {
-          printf("ERROR: Uniform '%s' not found or optimized out!\n", Name);
-        }
+  for (unsigned int i = 0; i < m_boneLocation.size(); i++) {
+    char Name[256] = {0x00};
+    snprintf(Name, sizeof(Name), "gBones[%d]", i);
+    m_boneLocation[i] = glGetUniformLocation(id, Name);
+    if (m_boneLocation[i] == -1) {
+      printf("ERROR: Uniform '%s' not found or optimized out!\n", Name);
     }
+  }
 }
 
-void Shader::setBoneTransform(GLint Index, const glm::mat4& Transform)
-{
-    assert((Index < MAX_BONE_COUNT) && "Index < MAX_BONE_COUNT failed");
+void Shader::setBoneTransform(GLint Index, const glm::mat4 &Transform) {
+  assert((Index < MAX_BONE_COUNT) && "Index < MAX_BONE_COUNT failed");
 
-    use();
-    glUniformMatrix4fv(m_boneLocation[Index], 1, GL_FALSE, glm::value_ptr(Transform));
-    // printf("Bone index: %d\n",Index);
-    // for(size_t i = 0; i < 4; ++i){
-    //   for(size_t j = 0; j < 4; ++j){
-    //     printf("%f ",Transform[i][j]);
-    //   }
-    //   printf("\n");
-    // }
-    unuse();
-    //handleGLerrors();
+  use();
+  glUniformMatrix4fv(m_boneLocation[Index], 1, GL_FALSE,
+                     glm::value_ptr(Transform));
+  // printf("Bone index: %d\n",Index);
+  // for(size_t i = 0; i < 4; ++i){
+  //   for(size_t j = 0; j < 4; ++j){
+  //     printf("%f ",Transform[i][j]);
+  //   }
+  //   printf("\n");
+  // }
+  unuse();
+  // handleGLerrors();
 }
-
 
 void Shader::set1i(GLint value, const GLchar *name) {
   use();

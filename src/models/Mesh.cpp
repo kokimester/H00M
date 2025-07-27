@@ -6,7 +6,7 @@ Mesh::Mesh() : VAO(0), VBO(0), IBO(0), indexCount(0) {
 
 Mesh::~Mesh() {
   /* std::cout << "Mesh destructor! (" << VAO << ")" << std::endl; */
-  printf("Mesh is destructed %p: %d\n", (void *)this, VAO);
+  /* printf("Mesh is destructed %p: %d\n", (void *)this, VAO); */
   clearMesh();
 }
 
@@ -14,7 +14,7 @@ Mesh::Mesh(const Mesh &&theOther)
     : VAO{theOther.VAO}, VBO{theOther.VBO}, IBO{theOther.IBO},
       indexCount{theOther.indexCount} {
   /* std::cout << "Mesh move construction (" << VAO << ")" << std::endl; */
-  printf("Mesh is move constructed %p: %d\n", (void *)this, VAO);
+  /* printf("Mesh is move constructed %p: %d\n", (void *)this, VAO); */
 }
 
 void Mesh::createMesh(const std::vector<GLfloat> &vertices,
@@ -23,7 +23,7 @@ void Mesh::createMesh(const std::vector<GLfloat> &vertices,
 
   glGenVertexArrays(1, &VAO);
   glBindVertexArray(VAO); // BIND
-  printf("createMesh this ptr: %p, VAO: %d\n", (void *)this, VAO);
+  /* printf("createMesh this ptr: %p, VAO: %d\n", (void *)this, VAO); */
 
   GLuint VERTEX_LOCATION = 0;
   GLuint TEXTURE_LOCATION = 1;

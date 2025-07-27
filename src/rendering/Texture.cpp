@@ -11,7 +11,7 @@ Texture::Texture(const char *fileLoc)
     throw std::invalid_argument(
         "Texture constructor received empty file location.");
   }
-  //TODO: wtf
+  // TODO: wtf
   fileLocation = new char[length];
   for (int i = 0; i < length; i++) {
     fileLocation[i] = fileLoc[i];
@@ -69,12 +69,12 @@ bool Texture::loadTexture() {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
   //.png supports alpha channel (transparency)
-  if(bitDepth == 4){
-    std::println("Loading texture as RGBA: {}",fileLocation);
+  if (bitDepth == 4) {
+    std::println("Loading texture as RGBA: {}", fileLocation);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
-               GL_UNSIGNED_BYTE, texData);
-  }else{
-    std::println("Loading texture as RGB: {}",fileLocation);
+                 GL_UNSIGNED_BYTE, texData);
+  } else {
+    std::println("Loading texture as RGB: {}", fileLocation);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
                  GL_UNSIGNED_BYTE,
                  texData); // GL_RGB vagz GL_RGBA texture fuggo !! mindig 0 !!
