@@ -114,7 +114,9 @@ bool Model::InitFromScene() {
   PopulateBuffers();
 
   for (size_t i = 0; i < m_Scene->mNumAnimations; ++i) {
-    std::println("{}: {}", i, m_Scene->mAnimations[i]->mName.C_Str());
+    std::string animatioName = m_Scene->mAnimations[i]->mName.C_Str();
+    std::println("{}: {}", i, animatioName);
+    m_AnimationNameToIndexMap[animatioName] = i;
   }
 
   return glGetError() == GL_NO_ERROR;

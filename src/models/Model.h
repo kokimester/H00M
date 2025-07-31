@@ -37,20 +37,30 @@ public:
     missingTexture.loadTexture();
   }
   ~Model();
-  bool LoadMesh(const std::filesystem::path &path);
+  bool LoadMesh(const std::filesystem::path& path);
   void Render();
 
   size_t NumBones() const { return (size_t)m_BoneNameToIndexMap.size(); }
 
-  size_t GetActiveAnimationIndex() const { return m_ActiveAnimation; }
+  const std::string& GetActiveAnimationName() const {
+    for (auto& it : m_AnimationNameToIndexMap) {
+      if (it.second == m_ActiveAnimation) {
+        return it.first;
+      }
+    }
+    // error, animation not found???
+    assert(0 && "Animation not found");
+  }
 
-  void SetActiveAnimation(size_t index) {
-    assert(index < m_Scene->mNumAnimations);
-    m_ActiveAnimation = index;
+  void SetActiveAnimation(const std::string& animation) {
+    std::println("Setting animation to: {}", animation);
+    assert(m_AnimationNameToIndexMap.contains(animation) &&
+           "Animation not found");
+    m_ActiveAnimation = m_AnimationNameToIndexMap[animation];
   }
 
   void GetBoneTransforms(float AnimationTimeSec,
-                         std::vector<glm::mat4> &Transforms);
+                         std::vector<glm::mat4>& Transforms);
 
 private:
 #define MAX_NUM_BONES_PER_VERTEX 4
@@ -58,11 +68,11 @@ private:
   void Clear();
 
   bool InitFromScene();
-  void CountVerticesAndIndices(unsigned int &NumVertices,
-                               unsigned int &NumIndices);
+  void CountVerticesAndIndices(unsigned int& NumVertices,
+                               unsigned int& NumIndices);
   void ReserveSpace(unsigned int NumVertices, unsigned int NumIndices);
   void InitAllMeshes();
-  void InitSingleMesh(size_t MeshIndex, const aiMesh *paiMesh);
+  void InitSingleMesh(size_t MeshIndex, const aiMesh* paiMesh);
   void InitMaterials();
   void PopulateBuffers();
 
@@ -87,23 +97,23 @@ private:
     }
   };
 
-  void LoadMeshBones(size_t MeshIndex, const aiMesh *paiMesh);
-  void LoadSingleBone(size_t MeshIndex, const aiBone *pBone);
-  size_t GetBoneId(const aiBone *pBone);
+  void LoadMeshBones(size_t MeshIndex, const aiMesh* paiMesh);
+  void LoadSingleBone(size_t MeshIndex, const aiBone* pBone);
+  size_t GetBoneId(const aiBone* pBone);
 
-  void CalcInterpolatedScaling(aiVector3D &Out, float AnimationTime,
-                               const aiNodeAnim *pNodeAnim);
-  void CalcInterpolatedRotation(aiQuaternion &Out, float AnimationTime,
-                                const aiNodeAnim *pNodeAnim);
-  void CalcInterpolatedPosition(aiVector3D &Out, float AnimationTime,
-                                const aiNodeAnim *pNodeAnim);
-  size_t FindScaling(float AnimationTime, const aiNodeAnim *pNodeAnim);
-  size_t FindRotation(float AnimationTime, const aiNodeAnim *pNodeAnim);
-  size_t FindPosition(float AnimationTime, const aiNodeAnim *pNodeAnim);
-  const aiNodeAnim *FindNodeAnim(const aiAnimation *pAnimation,
-                                 const std::string &NodeName);
-  void ReadNodeHierarchy(float AnimationTime, const aiNode *pNode,
-                         const glm::mat4 &ParentTransform);
+  void CalcInterpolatedScaling(aiVector3D& Out, float AnimationTime,
+                               const aiNodeAnim* pNodeAnim);
+  void CalcInterpolatedRotation(aiQuaternion& Out, float AnimationTime,
+                                const aiNodeAnim* pNodeAnim);
+  void CalcInterpolatedPosition(aiVector3D& Out, float AnimationTime,
+                                const aiNodeAnim* pNodeAnim);
+  size_t FindScaling(float AnimationTime, const aiNodeAnim* pNodeAnim);
+  size_t FindRotation(float AnimationTime, const aiNodeAnim* pNodeAnim);
+  size_t FindPosition(float AnimationTime, const aiNodeAnim* pNodeAnim);
+  const aiNodeAnim* FindNodeAnim(const aiAnimation* pAnimation,
+                                 const std::string& NodeName);
+  void ReadNodeHierarchy(float AnimationTime, const aiNode* pNode,
+                         const glm::mat4& ParentTransform);
 #define INVALID_MATERIAL 0xFFFFFFFF
 
   enum BUFFER_TYPE {
@@ -133,7 +143,7 @@ private:
   };
 
   Assimp::Importer m_Importer;
-  const aiScene *m_Scene = nullptr;
+  const aiScene* m_Scene = nullptr;
 
   std::vector<BasicMeshEntry> m_Meshes;
   std::vector<std::unique_ptr<Texture>> m_TextureList;
@@ -150,12 +160,13 @@ private:
 
   // animations
   size_t m_ActiveAnimation = 0;
+  std::map<std::string, size_t> m_AnimationNameToIndexMap;
 
   struct BoneInfo {
     glm::mat4 OffsetMatrix;
     glm::mat4 FinalTransformation;
 
-    BoneInfo(const glm::mat4 &Offset) {
+    BoneInfo(const glm::mat4& Offset) {
       OffsetMatrix = glm::transpose(Offset);
       FinalTransformation = glm::mat4{0.f};
     }

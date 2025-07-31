@@ -58,14 +58,14 @@ void errorMessageCallback([[maybe_unused]] GLenum source,
                           [[maybe_unused]] GLuint id,
                           [[maybe_unused]] GLenum severity,
                           [[maybe_unused]] GLsizei length,
-                          [[maybe_unused]] const GLchar *message,
-                          [[maybe_unused]] const void *userParam) {
+                          [[maybe_unused]] const GLchar* message,
+                          [[maybe_unused]] const void* userParam) {
   // std::println("errorMessageCallback was called with message: {}",message);
 }
 
-int validateShaderFiles(const fs::path &projectPath, const fs::path &shaderDir,
-                        const fs::path &vertexShaderFile,
-                        const fs::path &fragmentShaderFile, Shader &shader) {
+int validateShaderFiles(const fs::path& projectPath, const fs::path& shaderDir,
+                        const fs::path& vertexShaderFile,
+                        const fs::path& fragmentShaderFile, Shader& shader) {
   auto vertexPath = projectPath / shaderDir / vertexShaderFile;
   auto fragmentPath = projectPath / shaderDir / fragmentShaderFile;
   if (!std::filesystem::exists(vertexPath) ||
@@ -107,10 +107,10 @@ struct transform_component {
 struct model_component {
   glm::mat4 modelMat{1.f};
   glm::mat4 modelDefaultOrientationRotation{1.f};
-  Model &model;
-  Material &material;
-  Texture &texture;
-  model_component(Model &model, Material &material, Texture &texture,
+  Model& model;
+  Material& material;
+  Texture& texture;
+  model_component(Model& model, Material& material, Texture& texture,
                   glm::mat4 defaultRotation = {1.f})
       : modelDefaultOrientationRotation{defaultRotation}, model{model},
         material{material}, texture{texture} {}
@@ -123,16 +123,16 @@ struct registry {
 
 struct model_system {
 
-  void update(registry &reg) {
+  void update(registry& reg) {
     for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
       if (reg.models.contains(e) && reg.transforms.contains(e)) {
-        glm::mat4 &modelMatrix = reg.models.at(e).modelMat;
+        glm::mat4& modelMatrix = reg.models.at(e).modelMat;
         modelMatrix = glm::mat4{1.f};
-        auto &modelPosition = reg.transforms.at(e).pos;
-        auto &scale = reg.transforms.at(e).scale;
-        auto &rotationInDegrees = reg.transforms.at(e).rotationInDegrees;
-        auto &rotation = reg.transforms.at(e).rot;
-        auto &defaultrotation =
+        auto& modelPosition = reg.transforms.at(e).pos;
+        auto& scale = reg.transforms.at(e).scale;
+        auto& rotationInDegrees = reg.transforms.at(e).rotationInDegrees;
+        auto& rotation = reg.transforms.at(e).rot;
+        auto& defaultrotation =
             reg.models.at(e).modelDefaultOrientationRotation;
         modelMatrix = glm::translate(modelMatrix, modelPosition);
         modelMatrix = glm::scale(modelMatrix, scale);
@@ -144,13 +144,13 @@ struct model_system {
     }
   }
 
-  void render(registry &reg, Shader &shader) {
+  void render(registry& reg, Shader& shader) {
     for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
       if (reg.models.contains(e)) {
-        auto &modelMatrix = reg.models.at(e).modelMat;
-        auto &model = reg.models.at(e).model;
-        auto &material = reg.models.at(e).material;
-        auto &texture = reg.models.at(e).texture;
+        auto& modelMatrix = reg.models.at(e).modelMat;
+        auto& model = reg.models.at(e).model;
+        auto& material = reg.models.at(e).material;
+        auto& texture = reg.models.at(e).texture;
         shader.setMat4fv(modelMatrix, "model");
         shader.use();
         texture.useTexture();
@@ -164,7 +164,7 @@ struct model_system {
 };
 
 struct transform_system {
-  void update(registry &reg, float dt) {
+  void update(registry& reg, float dt) {
     for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
       if (reg.transforms.contains(e)) {
         reg.transforms[e].pos += reg.transforms[e].vel * dt;
@@ -199,9 +199,9 @@ void setupShadowTexture() {
 }
 
 // TODO: handle more light sources
-void render(model_system &ms, registry &componentRegistry,
-            Shader &shadow_shader, Shader &shader,
-            const glm::mat4 &lightSpaceMatrix, unsigned int depthMapFBO,
+void render(model_system& ms, registry& componentRegistry,
+            Shader& shadow_shader, Shader& shader,
+            const glm::mat4& lightSpaceMatrix, unsigned int depthMapFBO,
             unsigned int depthMap) {
   // 1. first render to depth map
   shadow_shader.setMat4fv(lightSpaceMatrix, "lightSpaceMatrix");
@@ -226,8 +226,8 @@ void render(model_system &ms, registry &componentRegistry,
 };
 
 int loadshader(std::filesystem::path projectPath,
-               const std::string &shaderDirStr, const std::string &shader_name,
-               Shader &shader) {
+               const std::string& shaderDirStr, const std::string& shader_name,
+               Shader& shader) {
   std::string vertexFileExt = ".vert";
   std::string fragFileExt = ".frag";
   auto shaderDir = std::filesystem::path(shaderDirStr);
@@ -241,7 +241,7 @@ int loadshader(std::filesystem::path projectPath,
   return 0;
 };
 
-bool isValidProjectPath(std::filesystem::path &projectPath) {
+bool isValidProjectPath(std::filesystem::path& projectPath) {
   std::string_view projectName = "H00M";
   while (projectPath != projectPath.root_path() &&
          projectPath.filename() != projectName) {
@@ -255,15 +255,15 @@ bool isValidProjectPath(std::filesystem::path &projectPath) {
   return true;
 }
 
-unsigned int loadCubemap(const std::array<std::string_view, 6> &faces,
-                         const fs::path &skyBoxPath) {
+unsigned int loadCubemap(const std::array<std::string_view, 6>& faces,
+                         const fs::path& skyBoxPath) {
   unsigned int textureID;
   glGenTextures(1, &textureID);
   glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
 
   int width, height, nrChannels;
   for (unsigned int i = 0; i < faces.size(); i++) {
-    unsigned char *data =
+    unsigned char* data =
         stbi_load(fs::path(skyBoxPath / faces[i]).string().c_str(), &width,
                   &height, &nrChannels, 0);
     if (data) {
@@ -314,7 +314,7 @@ unsigned int loadSkybox() {
   glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices,
                GL_STATIC_DRAW);
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
   return skyboxVAO;
 }
 
@@ -403,7 +403,7 @@ int main() {
       // modelDir / std::filesystem::path("ak47.glb"), false);
       // arm.loadModel(projectPath / modelDir /
       // std::filesystem::path("viewmodel.obj"), false);
-    } catch (const std::invalid_argument &err) {
+    } catch (const std::invalid_argument& err) {
       std::cerr << err.what() << std::endl;
     }
     bool modelsLoaded = true;
@@ -512,7 +512,7 @@ int main() {
     registry componentRegistry;
 
     // TODO: create component addition one-by-one instead
-    auto addEntity = [&](Model &model, Material &mat, Texture &texture,
+    auto addEntity = [&](Model& model, Material& mat, Texture& texture,
                          transform_component tc = {},
                          glm::mat4 defaultRotation = {1.f}) {
       if (MAX_ENTITY >= 20000) {
@@ -697,7 +697,7 @@ int main() {
       glm::mat4 lightView =
           glm::lookAt(-10.f * mainLight.getDirection(),
                       glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-      auto &flashlight = spotLights[0];
+      auto& flashlight = spotLights[0];
       lightView = glm::lookAt(flashlight.getPos(),
                               flashlight.getPos() + flashlight.getDirection(),
                               glm::vec3(0.f, 1.f, 0.f));
@@ -735,7 +735,7 @@ int main() {
       static float maxAnimationTime = 1.f;
       // reloading
       if (keys[GLFW_KEY_R]) {
-        ak.SetActiveAnimation(0);
+        ak.SetActiveAnimation("reload");
         if (!currentlyInAnimation) {
           startTime = now;
           currentlyInAnimation = true;
@@ -748,12 +748,12 @@ int main() {
                             0.5f * camera.getCameraFront());
       if (keys[GLFW_KEY_Q]) {
         if (!currentlyInAnimation) {
-          ak.SetActiveAnimation(2);
+          ak.SetActiveAnimation("shoot");
           startTime = now;
           currentlyInAnimation = true;
           maxAnimationTime = 0.25f;
           pointLightCount = 1;
-          auto plPos = pointLights[0].getPos();
+          /* auto plPos = pointLights[0].getPos(); */
           /* std::println("Adding muzzle flash at: {} {}
            * {}",plPos.x,plPos.y,plPos.z); */
         }
@@ -789,7 +789,7 @@ int main() {
 
       //----Viewmodel rendering-----
       //--Render muzzleflash--
-      if (ak.GetActiveAnimationIndex() == 2) {
+      if (ak.GetActiveAnimationName() == "shoot") {
         if (currentlyInAnimation) {
           auto muzzleTranslation = glm::mat4{1.f};
           muzzleTranslation =
