@@ -32,6 +32,13 @@
 // footprint on unanimated objects.
 class Model {
 public:
+  enum class ANIMATION_STATE : uint8_t {
+    //for models without any animations
+    NO_ANIMATION,
+    //for models with animations currently not animating
+    IDLE,
+    IN_ANIMATION
+  };
   // TODO: remove this baked in path
   Model() : missingTexture{"../textures/missing.jpg"} {
     missingTexture.loadTexture();
@@ -40,27 +47,13 @@ public:
   bool LoadMesh(const std::filesystem::path& path);
   void Render();
 
-  size_t NumBones() const { return (size_t)m_BoneNameToIndexMap.size(); }
-
-  const std::string& GetActiveAnimationName() const {
-    for (auto& it : m_AnimationNameToIndexMap) {
-      if (it.second == m_ActiveAnimation) {
-        return it.first;
-      }
-    }
-    // error, animation not found???
-    assert(0 && "Animation not found");
-  }
-
-  void SetActiveAnimation(const std::string& animation) {
-    std::println("Setting animation to: {}", animation);
-    assert(m_AnimationNameToIndexMap.contains(animation) &&
-           "Animation not found");
-    m_ActiveAnimation = m_AnimationNameToIndexMap[animation];
-  }
-
-  void GetBoneTransforms(float AnimationTimeSec,
-                         std::vector<glm::mat4>& Transforms);
+  size_t NumBones() const { return m_BoneNameToIndexMap.size(); }
+  const std::string& GetActiveAnimationName() const;
+  void SetActiveAnimation(const std::string& animation);
+  void Animate(GLfloat deltaTime);
+  void GetBoneTransforms(std::vector<glm::mat4>& Transforms);
+  ANIMATION_STATE GetAnimationState() const;
+  float GetAnimationProgress() const;
 
 private:
 #define MAX_NUM_BONES_PER_VERTEX 4
@@ -87,8 +80,6 @@ private:
         if (Weights[i] < 0.0001) {
           BoneIDs[i] = BoneID;
           Weights[i] = Weight;
-          // printf("Adding bone %d weight %f at index %i\n", BoneID, Weight,
-          // i);
           return;
         }
       }
@@ -158,9 +149,16 @@ private:
 
   std::map<std::string, size_t> m_BoneNameToIndexMap;
 
-  // animations
+  // --- Animations ---
+
   size_t m_ActiveAnimation = 0;
   std::map<std::string, size_t> m_AnimationNameToIndexMap;
+  float m_AnimationTime = 0.f;
+  //TODO: figure out a better way to store this 
+  //(maybe a struct for all animations with all relevant information stored insed)
+  float m_TicksPerSecond = 0.f;
+  
+  ANIMATION_STATE m_AnimationState = ANIMATION_STATE::NO_ANIMATION;
 
   struct BoneInfo {
     glm::mat4 OffsetMatrix;

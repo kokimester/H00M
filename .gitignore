@@ -2,7 +2,13 @@
 build/
 .cache/
 .vscode/
-models/
+models/*.glb
+models/*.gltf
+models/*.jpg
+models/*.png
+models/*.mtl
+models/*.bin
+models/*.fbx
 textures/
 *.d
 

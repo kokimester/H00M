@@ -731,44 +731,26 @@ int main() {
         std::println("Active bone: {}", activeBoneIndex);
         keys[GLFW_KEY_E] = false;
       }
-      static bool currentlyInAnimation = false;
-      static float maxAnimationTime = 1.f;
       // reloading
       if (keys[GLFW_KEY_R]) {
         ak.SetActiveAnimation("reload");
-        if (!currentlyInAnimation) {
-          startTime = now;
-          currentlyInAnimation = true;
-          maxAnimationTime = 1.f;
-        }
         keys[GLFW_KEY_R] = false;
       }
       // shooting
       pointLights[0].setPos(camera.getCameraPosition() +
                             0.5f * camera.getCameraFront());
+
       if (keys[GLFW_KEY_Q]) {
-        if (!currentlyInAnimation) {
           ak.SetActiveAnimation("shoot");
-          startTime = now;
-          currentlyInAnimation = true;
-          maxAnimationTime = 0.25f;
           pointLightCount = 1;
           /* auto plPos = pointLights[0].getPos(); */
           /* std::println("Adding muzzle flash at: {} {}
            * {}",plPos.x,plPos.y,plPos.z); */
-        }
       }
-      float AnimationTimeSec = 0.f;
-      if (currentlyInAnimation) {
-        AnimationTimeSec = now - startTime;
-      } else {
-        AnimationTimeSec = 0.f;
-        pointLightCount = 0;
+      if(ak.GetAnimationState() == Model::ANIMATION_STATE::IDLE){
+          pointLightCount = 0;
       }
-      if (AnimationTimeSec > maxAnimationTime) {
-        currentlyInAnimation = false;
-      }
-
+  
       //----Skybox----
       // draw skybox as last
       glDepthFunc(GL_LEQUAL); // change depth function so depth test passes when
@@ -787,10 +769,9 @@ int main() {
       glDepthFunc(GL_LESS); // set depth function back to default
       //----Skybox----
 
-      //----Viewmodel rendering-----
       //--Render muzzleflash--
       if (ak.GetActiveAnimationName() == "shoot") {
-        if (currentlyInAnimation) {
+        if (ak.GetAnimationState() == Model::ANIMATION_STATE::IN_ANIMATION) {
           auto muzzleTranslation = glm::mat4{1.f};
           muzzleTranslation =
               glm::translate(muzzleTranslation, glm::vec3{0.3f, -0.25f, -2.2f});
@@ -800,7 +781,7 @@ int main() {
           muzzleFlashShader.setMat4fv(projection, "projection");
           muzzleFlashShader.setMat4fv(view, "view");
           muzzleFlashShader.setMat4fv(muzzleTranslation, "model");
-          muzzleFlashShader.set1f(AnimationTimeSec / maxAnimationTime,
+          muzzleFlashShader.set1f(ak.GetAnimationProgress(),
                                   "progress");
 
           muzzleFlashShader.use();
@@ -813,8 +794,10 @@ int main() {
           glDisable(GL_BLEND);
         }
       }
-
       //--Render muzzleflash--
+
+
+      //----Viewmodel rendering-----
       glClear(GL_DEPTH_BUFFER_BIT);
       auto modelMatrix = glm::mat4{1.f};
       auto scale = glm::vec3{0.1f};
@@ -837,8 +820,8 @@ int main() {
       playerLocationMat = glm::translate(playerLocationMat, playerLocation);
       viewmodelShader.setMat4fv(playerLocationMat, "playerLocation");
       std::vector<glm::mat4> boneTransforms;
-      // static float AnimationTimeSec = 0;
-      ak.GetBoneTransforms(AnimationTimeSec, boneTransforms);
+      ak.Animate(deltaTime);
+      ak.GetBoneTransforms(boneTransforms);
       for (size_t i = 1; i < boneTransforms.size(); i++) {
         // boneTransforms[i] = glm::mat4{1.f};
         viewmodelShader.setBoneTransform(i, boneTransforms[i]);
