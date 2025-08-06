@@ -4,7 +4,6 @@
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
-#include <map>
 #include <print>
 #include <string>
 
@@ -27,10 +26,12 @@
 #include "Camera.h"
 #include "CommonValues.h"
 #include "DirectionalLight.h"
+#include "Entity.h"
 #include "Line.h"
 #include "Material.h"
 #include "Mesh.h"
 #include "Model.h"
+#include "Player.h"
 #include "PointLight.h"
 #include "Shader.h"
 #include "Spotlight.h"
@@ -41,17 +42,17 @@
 #include <assimp/Importer.hpp>
 
 // TODO: Globals, move somewhere else, as static perhaps
-GLfloat deltaTime = 0.0f;
-GLfloat lastTime = 0.0f;
+GLfloat deltaTime               = 0.0f;
+GLfloat lastTime                = 0.0f;
 GLfloat lastTimeTextWasRendered = 0.0f;
-constexpr GLfloat textTickRate = 10.0f;
+constexpr GLfloat textTickRate  = 10.0f;
 std::string timeStr, FPSStr;
 std::string cameraLocStr, cameraFacingStr, entityCountStr;
 
 // settings
-const unsigned int SCR_WIDTH = 1366;
+const unsigned int SCR_WIDTH  = 1366;
 const unsigned int SCR_HEIGHT = 768;
-namespace fs = std::filesystem;
+namespace fs                  = std::filesystem;
 
 void errorMessageCallback([[maybe_unused]] GLenum source,
                           [[maybe_unused]] GLenum type,
@@ -66,7 +67,7 @@ void errorMessageCallback([[maybe_unused]] GLenum source,
 int validateShaderFiles(const fs::path& projectPath, const fs::path& shaderDir,
                         const fs::path& vertexShaderFile,
                         const fs::path& fragmentShaderFile, Shader& shader) {
-  auto vertexPath = projectPath / shaderDir / vertexShaderFile;
+  auto vertexPath   = projectPath / shaderDir / vertexShaderFile;
   auto fragmentPath = projectPath / shaderDir / fragmentShaderFile;
   if (!std::filesystem::exists(vertexPath) ||
       !std::filesystem::exists(fragmentPath)) {
@@ -76,7 +77,7 @@ int validateShaderFiles(const fs::path& projectPath, const fs::path& shaderDir,
     std::cout << fragmentPath.string() << std::endl;
     return -1;
   }
-  std::string vertexFileName = vertexPath.string();
+  std::string vertexFileName   = vertexPath.string();
   std::string fragmentFileName = fragmentPath.string();
   if (shader.compile_and_link(vertexFileName.c_str(),
                               fragmentFileName.c_str())) {
@@ -85,95 +86,6 @@ int validateShaderFiles(const fs::path& projectPath, const fs::path& shaderDir,
   }
   return 0;
 }
-
-using entity = std::size_t;
-entity MAX_ENTITY = 0;
-entity create_entity() {
-  static entity entities = 0;
-  ++entities;
-  MAX_ENTITY = entities;
-  return entities;
-}
-
-struct transform_component {
-  glm::vec3 pos{0.f};
-  glm::vec3 vel{0.f};
-  glm::vec3 rot{0.f};
-  glm::vec3 scale{1.f};
-  GLfloat rotationInDegrees = 0.f;
-  GLfloat rotationvel = 0.f;
-};
-
-struct model_component {
-  glm::mat4 modelMat{1.f};
-  glm::mat4 modelDefaultOrientationRotation{1.f};
-  Model& model;
-  Material& material;
-  Texture& texture;
-  model_component(Model& model, Material& material, Texture& texture,
-                  glm::mat4 defaultRotation = {1.f})
-      : modelDefaultOrientationRotation{defaultRotation}, model{model},
-        material{material}, texture{texture} {}
-};
-
-struct registry {
-  std::unordered_map<entity, model_component> models;
-  std::unordered_map<entity, transform_component> transforms;
-};
-
-struct model_system {
-
-  void update(registry& reg) {
-    for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
-      if (reg.models.contains(e) && reg.transforms.contains(e)) {
-        glm::mat4& modelMatrix = reg.models.at(e).modelMat;
-        modelMatrix = glm::mat4{1.f};
-        auto& modelPosition = reg.transforms.at(e).pos;
-        auto& scale = reg.transforms.at(e).scale;
-        auto& rotationInDegrees = reg.transforms.at(e).rotationInDegrees;
-        auto& rotation = reg.transforms.at(e).rot;
-        auto& defaultrotation =
-            reg.models.at(e).modelDefaultOrientationRotation;
-        modelMatrix = glm::translate(modelMatrix, modelPosition);
-        modelMatrix = glm::scale(modelMatrix, scale);
-        // rotating the model by the loadoffset
-        modelMatrix = modelMatrix * defaultrotation;
-        modelMatrix =
-            glm::rotate(modelMatrix, glm::radians(rotationInDegrees), rotation);
-      }
-    }
-  }
-
-  void render(registry& reg, Shader& shader) {
-    for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
-      if (reg.models.contains(e)) {
-        auto& modelMatrix = reg.models.at(e).modelMat;
-        auto& model = reg.models.at(e).model;
-        auto& material = reg.models.at(e).material;
-        auto& texture = reg.models.at(e).texture;
-        shader.setMat4fv(modelMatrix, "model");
-        shader.use();
-        texture.useTexture();
-        shader.useMaterial(material, "material.shininess",
-                           "material.specularIntensity");
-        model.Render();
-        shader.unuse();
-      }
-    }
-  }
-};
-
-struct transform_system {
-  void update(registry& reg, float dt) {
-    for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
-      if (reg.transforms.contains(e)) {
-        reg.transforms[e].pos += reg.transforms[e].vel * dt;
-        reg.transforms[e].rotationInDegrees +=
-            reg.transforms[e].rotationvel * dt;
-      }
-    }
-  }
-};
 
 // TODO: move this to a class
 const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
@@ -229,8 +141,8 @@ int loadshader(std::filesystem::path projectPath,
                const std::string& shaderDirStr, const std::string& shader_name,
                Shader& shader) {
   std::string vertexFileExt = ".vert";
-  std::string fragFileExt = ".frag";
-  auto shaderDir = std::filesystem::path(shaderDirStr);
+  std::string fragFileExt   = ".frag";
+  auto shaderDir            = std::filesystem::path(shaderDirStr);
   auto vFile = std::filesystem::path(shader_name + vertexFileExt);
   auto fFile = std::filesystem::path(shader_name + fragFileExt);
   if (validateShaderFiles(projectPath, shaderDir, vFile, fFile, shader)) {
@@ -350,7 +262,7 @@ int main() {
     Spotlight spotLights[MAX_SPOT_LIGHTS];
 
     unsigned int pointLightCount = 0;
-    unsigned int spotLightCount = 0;
+    unsigned int spotLightCount  = 0;
 
     pointLights[0] = PointLight({1.0f, 1.0f, 1.0f}, 0.0f, 0.3f, 0.0f, 1.0f,
                                 0.0f, 0.3f, 0.2f, 0.1f);
@@ -439,7 +351,7 @@ int main() {
 
     // material
     Material shinyMaterial = Material(4.0f, 256);
-    Material dullMaterial = Material(0.3f, 2);
+    Material dullMaterial  = Material(0.3f, 2);
 
     // compile shaders
     Shader shader;
@@ -477,9 +389,9 @@ int main() {
     //------------------TEXT------------------
     TextRenderer textrenderer(SCR_WIDTH, SCR_HEIGHT);
 
-    auto textVertexShaderFile = std::filesystem::path("text.vert");
+    auto textVertexShaderFile   = std::filesystem::path("text.vert");
     auto textFragmentShaderFile = std::filesystem::path("text.frag");
-    auto textVertexPath = projectPath / shaderDir / textVertexShaderFile;
+    auto textVertexPath   = projectPath / shaderDir / textVertexShaderFile;
     auto textFragmentPath = projectPath / shaderDir / textFragmentShaderFile;
     if (!std::filesystem::exists(textVertexPath) ||
         !std::filesystem::exists(textFragmentPath)) {
@@ -490,8 +402,8 @@ int main() {
       return -1;
     }
     //  find path to font
-    auto fontDir = std::filesystem::path("fonts");
-    auto fontFile = std::filesystem::path("Consolas-Bold.ttf");
+    auto fontDir         = std::filesystem::path("fonts");
+    auto fontFile        = std::filesystem::path("Consolas-Bold.ttf");
     auto defaultFontPath = projectPath / fontDir / fontFile;
     if (!std::filesystem::exists(defaultFontPath)) {
       std::cout << "ERROR::FREETYPE: Failed to load font_name" << std::endl;
@@ -513,17 +425,20 @@ int main() {
 
     // TODO: create component addition one-by-one instead
     auto addEntity = [&](Model& model, Material& mat, Texture& texture,
-                         transform_component tc = {},
-                         glm::mat4 defaultRotation = {1.f}) {
+                         transform_component tc    = {},
+                         glm::mat4 defaultRotation = {1.f}) -> EntityType {
       if (MAX_ENTITY >= 20000) {
-        std::cout << "Entity cap reached" << std::endl;
-        return;
+        std::println("Entity cap reached");
+        // this prevents an invalid return statement
+        // and enables error handling
+        throw std::runtime_error("Entity cap reached");
       }
       std::println("Adding entity at: {} {} {}", tc.pos.x, tc.pos.y, tc.pos.z);
-      entity cubeEntity = create_entity();
+      auto entityID = create_entity();
       componentRegistry.models.emplace(
-          cubeEntity, model_component{model, mat, texture, defaultRotation});
-      componentRegistry.transforms[cubeEntity] = tc;
+          entityID, model_component{model, mat, texture, defaultRotation});
+      componentRegistry.transforms[entityID] = tc;
+      return entityID;
     };
 
     auto addEntities = [&](unsigned int count = 100) {
@@ -534,64 +449,73 @@ int main() {
       for (unsigned int i = 0; i < count; ++i) {
         addEntity(cube, dullMaterial, brickTexture,
                   transform_component{
-                      .pos = {(rand() % 40) - 20, 10.0f, (rand() % 40) - 20},
-                      .vel = glm::vec3{0.f},
-                      .rot = {0.0f, 1.0f, 0.0f},
+                      .pos   = {(rand() % 40) - 20, 10.0f, (rand() % 40) - 20},
+                      .vel   = glm::vec3{0.f},
+                      .rot   = {0.0f, 1.0f, 0.0f},
                       .scale = glm::vec3{1.f},
                       .rotationInDegrees = 0.f,
-                      .rotationvel = 0.f});
+                      .rotationvel       = 0.f});
       }
     };
+    // add player entity, transform_component only
 
-    // addEntity(ak, dullMaterial, brickTexture,
-    //       transform_component{.pos = {0.0f, 1.0f, 0.0f},
-    //                           .vel = glm::vec3{0.f},
-    //                           .rot = {0.0f, 1.0f, 0.0f},
-    //                           .scale = glm::vec3{0.1f},
-    //                           .rotationInDegrees = 0.f,
-    //                           .rotationvel = 0.f});
+    auto playerEntityID     = create_entity();
+    auto& playerCamera      = camera;
+    auto& playerRegistryRef = componentRegistry;
+
+    componentRegistry.transforms[playerEntityID] = transform_component{
+
+        .pos               = glm::vec3{0.f},
+        .vel               = glm::vec3{0.f},
+        .acc               = glm::vec3{0.f, -10.f, 0.f},
+        .rot               = {0.0f, 1.0f, 0.0f},
+        .scale             = glm::vec3{1.f},
+        .rotationInDegrees = 0.f,
+        .rotationvel       = 0.f
+
+    };
+
+    auto player = Player(playerEntityID, playerRegistryRef, playerCamera);
 
     addEntity(cube, dullMaterial, brickTexture,
-              transform_component{.pos = {-10.0f, -2.0005f, -10.0f},
-                                  .vel = glm::vec3{0.f},
-                                  .rot = {0.0f, 1.0f, 0.0f},
+              transform_component{.pos   = {-10.0f, -2.0005f, -10.0f},
+                                  .vel   = glm::vec3{0.f},
+                                  .rot   = {0.0f, 1.0f, 0.0f},
                                   .scale = glm::vec3{20.f, 0.01f, 20.f},
                                   .rotationInDegrees = 0.f,
-                                  .rotationvel = 0.f});
+                                  .rotationvel       = 0.f});
 
     addEntity(sphere, dullMaterial, brickTexture,
-              transform_component{.pos = {-3.0f, 1.0f, -1.0f},
-                                  .vel = glm::vec3{0.f},
-                                  .rot = {0.0f, 1.0f, 0.0f},
-                                  .scale = glm::vec3{1.f},
+              transform_component{.pos               = {-3.0f, 1.0f, -1.0f},
+                                  .vel               = glm::vec3{0.f},
+                                  .rot               = {0.0f, 1.0f, 0.0f},
+                                  .scale             = glm::vec3{1.f},
                                   .rotationInDegrees = 0.f,
-                                  .rotationvel = 0.f});
+                                  .rotationvel       = 0.f});
 
     addEntity(cube, dullMaterial, brickTexture,
-              transform_component{.pos = {-2.0f, 1.0f, -3.0f},
-                                  .vel = glm::vec3{0.f},
-                                  .rot = {0.0f, 1.0f, 0.0f},
-                                  .scale = glm::vec3{1.f},
+              transform_component{.pos               = {-2.0f, 1.0f, -3.0f},
+                                  .vel               = glm::vec3{0.f},
+                                  .rot               = {0.0f, 1.0f, 0.0f},
+                                  .scale             = glm::vec3{1.f},
                                   .rotationInDegrees = 0.f,
-                                  .rotationvel = 0.f});
+                                  .rotationvel       = 0.f});
 
-    {
-      addEntity(pyramid, shinyMaterial, brickTexture,
-                transform_component{.pos = {0.0f, -1.0f, -3.0f},
-                                    .vel = glm::vec3{0.f},
-                                    .rot = {0.0f, 1.0f, 0.0f},
-                                    .scale = glm::vec3{1.f},
-                                    .rotationInDegrees = 0.f,
-                                    .rotationvel = 10.f});
+    addEntity(pyramid, shinyMaterial, brickTexture,
+              transform_component{.pos               = {0.0f, -1.0f, -3.0f},
+                                  .vel               = glm::vec3{0.f},
+                                  .rot               = {0.0f, 1.0f, 0.0f},
+                                  .scale             = glm::vec3{1.f},
+                                  .rotationInDegrees = 0.f,
+                                  .rotationvel       = 10.f});
 
-      addEntity(pyramid, dullMaterial, dirtTexture,
-                transform_component{.pos = {0.0f, 2.0f, -3.0f},
-                                    .vel = glm::vec3{0.f},
-                                    .rot = {1.0f, 0.0f, 0.0f},
-                                    .scale = glm::vec3{0.5f},
-                                    .rotationInDegrees = 0.f,
-                                    .rotationvel = 0.f});
-    }
+    addEntity(pyramid, dullMaterial, dirtTexture,
+              transform_component{.pos               = {0.0f, 2.0f, -3.0f},
+                                  .vel               = glm::vec3{0.f},
+                                  .rot               = {1.0f, 0.0f, 0.0f},
+                                  .scale             = glm::vec3{0.5f},
+                                  .rotationInDegrees = 0.f,
+                                  .rotationvel       = 0.f});
 
     // TODO: set the numbers based on a common header file
     shader.set1i(0, "diffuseTexture");
@@ -618,8 +542,7 @@ int main() {
     unsigned int cubemapTexture = loadCubemap(cubemapFaces, skyBoxPath);
 
     unsigned int skyboxVAO = loadSkybox();
-    GLfloat startTime = glfwGetTime();
-    GLint activeBoneIndex = 0;
+    GLint activeBoneIndex  = 0;
 
     // create muzzleflash mesh
 
@@ -639,20 +562,24 @@ int main() {
     {
       glEnable(GL_DEPTH_TEST);
       // 1 es 2 re vonalakra csereli a haromszogeket
-      window.processInput(camera);
+      // window.processInput(camera);
 
       // returns elapsed time in seconds as a double
       GLfloat now = glfwGetTime();
-      deltaTime = now - lastTime;
-      lastTime = now;
+      deltaTime   = now - lastTime;
+      lastTime    = now;
 
       // ----System update functions----
       ts.update(componentRegistry, deltaTime);
       ms.update(componentRegistry);
       // ----System update functions----
 
-      camera.keyControl(window.getKeys(), deltaTime);
-      camera.mouseControl(window.getXChange(), window.getYChange());
+      /* camera.keyControl(window.getKeys(), deltaTime); */
+      /* camera.mouseControl(window.getXChange(), window.getYChange()); */
+
+      player.handleKeyboardInput(window.getKeys(), deltaTime);
+      player.handleMouseInput(window.getXChange(), window.getYChange());
+      player.update(deltaTime);
 
       if (camera.isFlashlightOn()) {
         spotLights[0].update(camera.getCameraPosition(),
@@ -697,10 +624,10 @@ int main() {
       glm::mat4 lightView =
           glm::lookAt(-10.f * mainLight.getDirection(),
                       glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-      auto& flashlight = spotLights[0];
-      lightView = glm::lookAt(flashlight.getPos(),
-                              flashlight.getPos() + flashlight.getDirection(),
-                              glm::vec3(0.f, 1.f, 0.f));
+      auto& flashlight           = spotLights[0];
+      lightView                  = glm::lookAt(flashlight.getPos(),
+                                               flashlight.getPos() + flashlight.getDirection(),
+                                               glm::vec3(0.f, 1.f, 0.f));
       glm::mat4 lightSpaceMatrix = lightProjection * lightView;
 
       render(ms, componentRegistry, shadow_shader, shader, lightSpaceMatrix,
@@ -741,16 +668,16 @@ int main() {
                             0.5f * camera.getCameraFront());
 
       if (keys[GLFW_KEY_Q]) {
-          ak.SetActiveAnimation("shoot");
-          pointLightCount = 1;
-          /* auto plPos = pointLights[0].getPos(); */
-          /* std::println("Adding muzzle flash at: {} {}
-           * {}",plPos.x,plPos.y,plPos.z); */
+        ak.SetActiveAnimation("shoot");
+        pointLightCount = 1;
+        /* auto plPos = pointLights[0].getPos(); */
+        /* std::println("Adding muzzle flash at: {} {}
+         * {}",plPos.x,plPos.y,plPos.z); */
       }
-      if(ak.GetAnimationState() == Model::ANIMATION_STATE::IDLE){
-          pointLightCount = 0;
+      if (ak.GetAnimationState() == Model::ANIMATION_STATE::IDLE) {
+        pointLightCount = 0;
       }
-  
+
       //----Skybox----
       // draw skybox as last
       glDepthFunc(GL_LEQUAL); // change depth function so depth test passes when
@@ -781,8 +708,7 @@ int main() {
           muzzleFlashShader.setMat4fv(projection, "projection");
           muzzleFlashShader.setMat4fv(view, "view");
           muzzleFlashShader.setMat4fv(muzzleTranslation, "model");
-          muzzleFlashShader.set1f(ak.GetAnimationProgress(),
-                                  "progress");
+          muzzleFlashShader.set1f(ak.GetAnimationProgress(), "progress");
 
           muzzleFlashShader.use();
           glEnable(GL_BLEND);
@@ -796,15 +722,14 @@ int main() {
       }
       //--Render muzzleflash--
 
-
       //----Viewmodel rendering-----
       glClear(GL_DEPTH_BUFFER_BIT);
       auto modelMatrix = glm::mat4{1.f};
-      auto scale = glm::vec3{0.1f};
-      modelMatrix = glm::translate(modelMatrix, glm::vec3{0.f, 0.f, 0.f});
-      modelMatrix = glm::scale(modelMatrix, scale);
-      modelMatrix = glm::rotate(modelMatrix, glm::radians(-180.f),
-                                glm::vec3{0.f, 1.f, 0.f});
+      auto scale       = glm::vec3{0.1f};
+      modelMatrix      = glm::translate(modelMatrix, glm::vec3{0.f, 0.f, 0.f});
+      modelMatrix      = glm::scale(modelMatrix, scale);
+      modelMatrix      = glm::rotate(modelMatrix, glm::radians(-180.f),
+                                     glm::vec3{0.f, 1.f, 0.f});
       viewmodelShader.setMat4fv(modelMatrix, "model");
       // viewmodelShader.setMat4fv(glm::mat4(1.f),"view");
       viewmodelShader.setMat4fv(view, "view");
@@ -815,7 +740,7 @@ int main() {
                                   "material.specularIntensity");
       // set player translation for fragpos info
       // TODO: this solution is not complete but for starters its enough
-      auto playerLocation = camera.getCameraPosition();
+      auto playerLocation         = camera.getCameraPosition();
       glm::mat4 playerLocationMat = glm::mat4{1.f};
       playerLocationMat = glm::translate(playerLocationMat, playerLocation);
       viewmodelShader.setMat4fv(playerLocationMat, "playerLocation");
@@ -835,11 +760,11 @@ int main() {
       {
         if (now - lastTimeTextWasRendered > 1 / textTickRate) {
           lastTimeTextWasRendered = now;
-          timeStr = "Elapsed time: " +
+          timeStr                 = "Elapsed time: " +
                     std::to_string(static_cast<unsigned int>(
                         std::floor(deltaTime * 1000.f))) +
                     " ms";
-          FPSStr = "FPS: " + std::to_string(static_cast<unsigned int>(
+          FPSStr       = "FPS: " + std::to_string(static_cast<unsigned int>(
                                  std::floor(1.f / deltaTime)));
           cameraLocStr = std::string("CAM location: ") +
                          glm::to_string(camera.getCameraPosition());

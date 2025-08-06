@@ -61,6 +61,7 @@ add_subdirectory (vendor/freetype)
 #
 include_directories (
     src/
+    src/gameplay/
     src/lights/
     src/models/
     src/player/
@@ -85,6 +86,8 @@ include_directories( ${CMAKE_BINARY_DIR}/vendor/assimp/include/ )
 file (GLOB         VENDORS_SOURCES vendor/glad/src/glad.c)
 file (GLOB_RECURSE PROJECT_HEADERS src/*.hpp
                                    src/*.h
+                                   src/gameplay/*.hpp
+                                   src/gameplay/*.h
                                    src/lights/*.hpp
                                    src/lights/*.h
                                    src/models/*.hpp
@@ -98,6 +101,8 @@ file (GLOB_RECURSE PROJECT_HEADERS src/*.hpp
                                     )
 file (GLOB_RECURSE PROJECT_SOURCES src/*.cpp
                                    src/*.c
+                                   src/gameplay/*.cpp
+                                   src/gameplay/*.c
                                    src/lights/*.cpp
                                    src/lights/*.c
                                    src/models/*.cpp
