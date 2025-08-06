@@ -30,15 +30,18 @@ public:
          float startpitch, float startMoveSpeed, float startTurnSpeed);
   ~Camera();
 
+  void setPosition(const glm::vec3&);
+
   glm::vec3 getCameraPosition() const;
   glm::vec3 getCameraFront() const;
   glm::vec3 getRight() const;
+  glm::vec3 getWorldUp() const;
 
   void invertFlashlight() { flashlightOn = !flashlightOn; }
   bool isFlashlightOn() const { return flashlightOn; }
 
-  glm::mat4 calculateViewMatrix();
+  glm::mat4 calculateViewMatrix() const;
 
-  void keyControl(bool *keys, float deltaTime);
+  void keyControl(bool* keys, float deltaTime);
   void mouseControl(float xChange, float yChange);
 };
