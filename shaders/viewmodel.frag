@@ -67,8 +67,6 @@ uniform PointLight pointLights[MAX_POINT_LIGHTS];
 uniform Spotlight spotLights[MAX_SPOT_LIGHTS];
 uniform DirectionalLight directionalLight;
 
-uniform int activeBoneIndex;
-
 uniform sampler2D theTexture;
 uniform Material material;
 
@@ -160,31 +158,6 @@ vec4 CalcPointLights()
 		totalColor += CalcPointLight(pointLights[i]);
 	 }
 	return totalColor;
-}
-
-vec4 debug(){
-    vec4 color = vec4(1.0,1.0,1.0,1.0);
-	bool found = false;
-
-    for (int i = 0 ; i < 4 ; i++) {
-        if (BoneIDs0[i] == activeBoneIndex) {
-           if (Weights0[i] >= 0.7) {
-               color = vec4(1.0, 0.0, 0.0, 0.0) * Weights0[i];
-           } else if (Weights0[i] >= 0.4 && Weights0[i] <= 0.6) {
-               color = vec4(0.0, 1.0, 0.0, 0.0) * Weights0[i];
-           } else if (Weights0[i] >= 0.1) {
-               color = vec4(1.0, 1.0, 0.0, 0.0) * Weights0[i];
-           }
-
-           found = true;
-           break;
-        }
-    }
-
-    if (!found ) {
-         color = vec4(1.0,1.0,1.0,1.0) * vec4(0.0001) + vec4(0.0, 0.0, 1.0, 0.0);
-    }
-	return color;
 }
 
 void main()

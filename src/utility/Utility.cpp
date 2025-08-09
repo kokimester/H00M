@@ -90,3 +90,59 @@ auto convertAssimpMatToGLM(const aiMatrix3x3 &AssimpMatrix) -> glm::mat4 {
   m[3][3] = 1;
   return m;
 };
+
+int validateShaderFiles(const std::filesystem::path& projectPath, 
+                        const std::filesystem::path& shaderDir,
+                        const std::filesystem::path& vertexShaderFile,
+                        const std::filesystem::path& fragmentShaderFile, 
+                        Shader& shader) {
+  auto vertexPath   = projectPath / shaderDir / vertexShaderFile;
+  auto fragmentPath = projectPath / shaderDir / fragmentShaderFile;
+  if (!std::filesystem::exists(vertexPath) ||
+      !std::filesystem::exists(fragmentPath)) {
+    std::cout << "ERROR::SHADER::MODEL Failed to load shader files."
+              << std::endl;
+    std::cout << vertexPath.string() << std::endl;
+    std::cout << fragmentPath.string() << std::endl;
+    return -1;
+  }
+  std::string vertexFileName   = vertexPath.string();
+  std::string fragmentFileName = fragmentPath.string();
+  if (shader.compile_and_link(vertexFileName.c_str(),
+                              fragmentFileName.c_str())) {
+    std::cout << "Shader compilation or linking error!\n";
+    return -2;
+  }
+  return 0;
+}
+
+int loadshader(std::filesystem::path projectPath,
+               const std::string& shaderDirStr, const std::string& shader_name,
+               Shader& shader) {
+  std::string vertexFileExt = ".vert";
+  std::string fragFileExt   = ".frag";
+  auto shaderDir            = std::filesystem::path(shaderDirStr);
+  auto vFile = std::filesystem::path(shader_name + vertexFileExt);
+  auto fFile = std::filesystem::path(shader_name + fragFileExt);
+  if (validateShaderFiles(projectPath, shaderDir, vFile, fFile, shader)) {
+    std::cout << "Error occured while validating shader files!\n";
+    return -1;
+  }
+  std::cout << "Succesfully built shader: " << shader_name << "\n";
+  return 0;
+};
+
+bool isValidProjectPath(std::filesystem::path& projectPath) {
+  //TODO: move this elsewhere
+  std::string_view projectName = "H00M";
+  while (projectPath != projectPath.root_path() &&
+         projectPath.filename() != projectName) {
+    projectPath = projectPath.parent_path();
+  }
+  if (projectPath == projectPath.root_path()) {
+    std::cout << "ERROR::FILESYSTEM: Failed to find project directory!"
+              << std::endl;
+    return false;
+  }
+  return true;
+}

@@ -257,20 +257,12 @@ void Shader::setupBones() {
 }
 
 void Shader::setBoneTransform(GLint Index, const glm::mat4 &Transform) {
-  assert((Index < MAX_BONE_COUNT) && "Index < MAX_BONE_COUNT failed");
+  assert((Index < static_cast<int>(MAX_BONE_COUNT)) && "Index < MAX_BONE_COUNT failed");
 
   use();
   glUniformMatrix4fv(m_boneLocation[Index], 1, GL_FALSE,
                      glm::value_ptr(Transform));
-  // printf("Bone index: %d\n",Index);
-  // for(size_t i = 0; i < 4; ++i){
-  //   for(size_t j = 0; j < 4; ++j){
-  //     printf("%f ",Transform[i][j]);
-  //   }
-  //   printf("\n");
-  // }
   unuse();
-  // handleGLerrors();
 }
 
 void Shader::set1i(GLint value, const GLchar *name) {

@@ -38,6 +38,8 @@
 #include "Text.h"
 #include "Texture.h"
 #include "Window.h"
+#include "Skybox.h"
+#include "Utility.h"
 
 #include <assimp/Importer.hpp>
 
@@ -64,28 +66,7 @@ void errorMessageCallback([[maybe_unused]] GLenum source,
   // std::println("errorMessageCallback was called with message: {}",message);
 }
 
-int validateShaderFiles(const fs::path& projectPath, const fs::path& shaderDir,
-                        const fs::path& vertexShaderFile,
-                        const fs::path& fragmentShaderFile, Shader& shader) {
-  auto vertexPath   = projectPath / shaderDir / vertexShaderFile;
-  auto fragmentPath = projectPath / shaderDir / fragmentShaderFile;
-  if (!std::filesystem::exists(vertexPath) ||
-      !std::filesystem::exists(fragmentPath)) {
-    std::cout << "ERROR::SHADER::MODEL Failed to load shader files."
-              << std::endl;
-    std::cout << vertexPath.string() << std::endl;
-    std::cout << fragmentPath.string() << std::endl;
-    return -1;
-  }
-  std::string vertexFileName   = vertexPath.string();
-  std::string fragmentFileName = fragmentPath.string();
-  if (shader.compile_and_link(vertexFileName.c_str(),
-                              fragmentFileName.c_str())) {
-    std::cout << "Shader compilation or linking error!\n";
-    return -2;
-  }
-  return 0;
-}
+
 
 // TODO: move this to a class
 const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
@@ -137,98 +118,6 @@ void render(model_system& ms, registry& componentRegistry,
   ms.render(componentRegistry, shader);
 };
 
-int loadshader(std::filesystem::path projectPath,
-               const std::string& shaderDirStr, const std::string& shader_name,
-               Shader& shader) {
-  std::string vertexFileExt = ".vert";
-  std::string fragFileExt   = ".frag";
-  auto shaderDir            = std::filesystem::path(shaderDirStr);
-  auto vFile = std::filesystem::path(shader_name + vertexFileExt);
-  auto fFile = std::filesystem::path(shader_name + fragFileExt);
-  if (validateShaderFiles(projectPath, shaderDir, vFile, fFile, shader)) {
-    std::cout << "Error occured while validating shader files!\n";
-    return -1;
-  }
-  std::cout << "Succesfully built shader: " << shader_name << "\n";
-  return 0;
-};
-
-bool isValidProjectPath(std::filesystem::path& projectPath) {
-  std::string_view projectName = "H00M";
-  while (projectPath != projectPath.root_path() &&
-         projectPath.filename() != projectName) {
-    projectPath = projectPath.parent_path();
-  }
-  if (projectPath == projectPath.root_path()) {
-    std::cout << "ERROR::FILESYSTEM: Failed to find project directory!"
-              << std::endl;
-    return false;
-  }
-  return true;
-}
-
-unsigned int loadCubemap(const std::array<std::string_view, 6>& faces,
-                         const fs::path& skyBoxPath) {
-  unsigned int textureID;
-  glGenTextures(1, &textureID);
-  glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
-
-  int width, height, nrChannels;
-  for (unsigned int i = 0; i < faces.size(); i++) {
-    unsigned char* data =
-        stbi_load(fs::path(skyBoxPath / faces[i]).string().c_str(), &width,
-                  &height, &nrChannels, 0);
-    if (data) {
-      glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height,
-                   0, GL_RGB, GL_UNSIGNED_BYTE, data);
-      stbi_image_free(data);
-    } else {
-      std::cout << "Cubemap tex failed to load at path: " << faces[i]
-                << std::endl;
-      stbi_image_free(data);
-    }
-  }
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-  return textureID;
-}
-
-unsigned int loadSkybox() {
-
-  float skyboxVertices[] = {
-      // positions
-      -1.0f, 1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f,
-      1.0f,  -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f,
-
-      -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  -1.0f,
-      -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,
-
-      1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,  1.0f,
-      1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f, -1.0f,
-
-      -1.0f, -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,  1.0f,  1.0f,
-      1.0f,  1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,
-
-      -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,
-      1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f,
-
-      -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f,
-      1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f};
-  unsigned int skyboxVAO, skyboxVBO;
-  glGenVertexArrays(1, &skyboxVAO);
-  glGenBuffers(1, &skyboxVBO);
-  glBindVertexArray(skyboxVAO);
-  glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices,
-               GL_STATIC_DRAW);
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-  return skyboxVAO;
-}
 
 int main() {
   {
@@ -293,7 +182,7 @@ int main() {
     // Check path
     auto projectPath = std::filesystem::current_path();
     if (!isValidProjectPath(projectPath)) {
-      std::cout << "Error occured while validating project path!\n";
+      std::println(stderr,"Error occured while validating project path!");
       return -1;
     }
 
@@ -305,19 +194,6 @@ int main() {
     Model ak;
     Model arm;
     fs::path modelDir = "models";
-    try {
-      // cube.loadModel(projectPath / modelDir /
-      // std::filesystem::path("cube-tex.obj"), true);
-      // pyramid.loadModel(projectPath / modelDir /
-      // std::filesystem::path("pyramid2.obj"), true);
-      // sphere.loadModel(projectPath / modelDir /
-      // std::filesystem::path("sphere.obj"), true); ak.loadModel(projectPath /
-      // modelDir / std::filesystem::path("ak47.glb"), false);
-      // arm.loadModel(projectPath / modelDir /
-      // std::filesystem::path("viewmodel.obj"), false);
-    } catch (const std::invalid_argument& err) {
-      std::cerr << err.what() << std::endl;
-    }
     bool modelsLoaded = true;
     std::println("Loading cube");
     modelsLoaded &= cube.LoadMesh(projectPath / modelDir /
@@ -335,7 +211,7 @@ int main() {
       std::println("Models failed to load!");
       return -1;
     }
-    std::cerr << "Loaded all models" << std::endl;
+    std::println("Loaded all models");
     // load textures
     Texture brickTexture("../textures/brick.png");
     brickTexture.loadTexture();
@@ -347,7 +223,7 @@ int main() {
     whiteTexture.loadTexture();
     Texture muzzleFlashTexture("../textures/muzzleflash.png");
     muzzleFlashTexture.loadTexture();
-    std::cerr << "Loaded all textures" << std::endl;
+    std::println("Loaded all textures");
 
     // material
     Material shinyMaterial = Material(4.0f, 256);
@@ -531,19 +407,14 @@ int main() {
     viewmodelShader.setupBones();
 
     setupShadowTexture();
-    // setup cubemap
+    // setup cubemap for skybox
     fs::path textureDir("textures");
     fs::path skyboxDir("skybox");
     fs::path skyBoxPath = projectPath / textureDir / skyboxDir;
     std::array<std::string_view, 6> cubemapFaces = {"right.jpg", "left.jpg",
                                                     "top.jpg",   "bottom.jpg",
                                                     "front.jpg", "back.jpg"};
-
-    unsigned int cubemapTexture = loadCubemap(cubemapFaces, skyBoxPath);
-
-    unsigned int skyboxVAO = loadSkybox();
-    GLint activeBoneIndex  = 0;
-
+    Skybox skybox(skyboxShader,skyBoxPath,cubemapFaces);
     // create muzzleflash mesh
 
     std::vector<unsigned int> muzzleIndices{0, 1, 2, 1, 2, 3};
@@ -654,8 +525,6 @@ int main() {
       auto keys = window.getKeys();
       if (keys[GLFW_KEY_E]) {
         // addEntities(1000);
-        activeBoneIndex = (activeBoneIndex + 1) % ak.NumBones();
-        std::println("Active bone: {}", activeBoneIndex);
         keys[GLFW_KEY_E] = false;
       }
       // reloading
@@ -670,9 +539,6 @@ int main() {
       if (keys[GLFW_KEY_Q]) {
         ak.SetActiveAnimation("shoot");
         pointLightCount = 1;
-        /* auto plPos = pointLights[0].getPos(); */
-        /* std::println("Adding muzzle flash at: {} {}
-         * {}",plPos.x,plPos.y,plPos.z); */
       }
       if (ak.GetAnimationState() == Model::ANIMATION_STATE::IDLE) {
         pointLightCount = 0;
@@ -680,20 +546,10 @@ int main() {
 
       //----Skybox----
       // draw skybox as last
-      glDepthFunc(GL_LEQUAL); // change depth function so depth test passes when
-                              // values are equal to depth buffer's content
       auto skyboxView = glm::mat4(glm::mat3(view));
       skyboxShader.setMat4fv(skyboxView, "view");
       skyboxShader.setMat4fv(projection, "projection");
-      // ... set view and projection matrix
-      skyboxShader.use();
-      glBindVertexArray(skyboxVAO);
-      glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
-      glDrawArrays(GL_TRIANGLES, 0, 36);
-      glDepthMask(GL_TRUE);
-      glBindVertexArray(0);
-      glDepthFunc(GL_LESS); // set depth function back to default
+      skybox.render();
       //----Skybox----
 
       //--Render muzzleflash--
@@ -734,7 +590,6 @@ int main() {
       // viewmodelShader.setMat4fv(glm::mat4(1.f),"view");
       viewmodelShader.setMat4fv(view, "view");
       viewmodelShader.setMat4fv(projection, "projection");
-      viewmodelShader.set1i(activeBoneIndex, "activeBoneIndex");
       viewmodelShader.use();
       viewmodelShader.useMaterial(shinyMaterial, "material.shininess",
                                   "material.specularIntensity");
@@ -748,14 +603,13 @@ int main() {
       ak.Animate(deltaTime);
       ak.GetBoneTransforms(boneTransforms);
       for (size_t i = 1; i < boneTransforms.size(); i++) {
-        // boneTransforms[i] = glm::mat4{1.f};
         viewmodelShader.setBoneTransform(i, boneTransforms[i]);
       }
       viewmodelShader.use();
-      // brickTexture.useTexture();
       ak.Render();
       //----Viewmodel rendering-----
 
+      //TODO: create debug output handler class
       // handle performance debug output
       {
         if (now - lastTimeTextWasRendered > 1 / textTickRate) {
@@ -773,7 +627,6 @@ int main() {
           entityCountStr =
               std::string("Entities: ") + std::to_string(MAX_ENTITY);
         }
-        // TODO: Fix text render, currently not drawing on the skybox
         //  ------ ADDING TEXT RENDER HERE ----------
         textrenderer.renderText(timeStr, 0.0f, SCR_HEIGHT - 24, 0.5f,
                                 glm::vec3(1.0f, 1.0f, 1.0f));
