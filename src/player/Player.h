@@ -15,6 +15,13 @@ public:
   void update(float deltaTime);
 
 private:
+  enum class PLAYER_STATE {
+    STANDING,
+    JUMPING
+  };
+  PLAYER_STATE m_PlayerState = PLAYER_STATE::STANDING;
+
+  
   EntityType m_EntityID;
   registry& m_Registry;
   Camera& m_PlayerCamera;

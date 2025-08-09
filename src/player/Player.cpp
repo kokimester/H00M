@@ -37,7 +37,10 @@ void Player::handleKeyboardInput(bool* keys, float deltaTime) {
     velocity += right * speed;
   }
   if (keys[GLFW_KEY_SPACE]) {
-    velocity += m_PlayerCamera.getWorldUp() * speed / 3.f;
+    if(m_PlayerState != PLAYER_STATE::JUMPING){
+      velocity += m_PlayerCamera.getWorldUp() * speed * 5.f;
+      m_PlayerState = PLAYER_STATE::JUMPING;
+    }
   }
   /* if (keys[GLFW_KEY_LEFT_CONTROL]) { */
   /*   velocity -= worldUp * speed; */
@@ -52,7 +55,13 @@ void Player::handleKeyboardInput(bool* keys, float deltaTime) {
 }
 
 void Player::update(float deltaTime) {
+  static float previousFallingSpeed = 0.f;
   auto playerPosition = m_Registry.transforms[m_EntityID].pos;
+  auto currentFallingSpeed = m_Registry.transforms[m_EntityID].vel.y;
+  if((previousFallingSpeed < 0.f) && (std::abs(currentFallingSpeed) < 0.01f)){
+    m_PlayerState = PLAYER_STATE::STANDING;
+  }
   auto cameraOffset   = glm::vec3{0.f, 1.f, 0.0f};
   m_PlayerCamera.setPosition(playerPosition + cameraOffset);
+  previousFallingSpeed = currentFallingSpeed;
 }
