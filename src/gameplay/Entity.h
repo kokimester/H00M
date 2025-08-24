@@ -15,6 +15,36 @@ inline EntityType create_entity() {
   MAX_ENTITY = entities;
   return entities;
 }
+struct AABB{
+  glm::vec3 min, max;
+  AABB() : min{0.f}, max{0.f} {}
+  AABB(const glm::vec3 min, const glm::vec3 max) : min{min}, max{max} {}
+  AABB(const AABB& theOther) = default;
+  void move(const glm::vec3& direction) { min += direction; max += direction; }
+};
+
+bool doesCollidePointvAABB(const glm::vec3& point, const AABB& box);
+
+bool doesCollideAABBvAABB(const AABB& a,const AABB& b);
+
+glm::vec3 getCollisionDirection(const glm::vec3& a, const glm::vec3& b);
+
+glm::vec3 getCollisionDirection(const AABB& a,const AABB& b);
+
+struct collision_component {
+  AABB box;
+  bool isMovable = false;
+  bool isColliding = false;
+};
+
+//chatgpt
+struct AABBManifold {
+    bool colliding = false;
+    glm::vec3 normal = glm::vec3(0.0f); // points from A to "out of B" along the MTD axis
+    float depth = 0.0f;                  // minimum translation depth along that axis
+};
+AABBManifold collideAABBvAABB_Manifold(const AABB& aIn, const AABB& bIn, float EPS = 0.0f);
+//chatgpt
 
 struct transform_component {
   glm::vec3 pos{0.f};
@@ -41,6 +71,7 @@ struct model_component {
 struct registry {
   std::unordered_map<EntityType, model_component> models;
   std::unordered_map<EntityType, transform_component> transforms;
+  std::unordered_map<EntityType, collision_component> collision_boxes;
 };
 
 struct model_system {
@@ -90,8 +121,46 @@ struct transform_system {
     for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
       if (reg.transforms.contains(e)) {
         reg.transforms[e].vel += reg.transforms[e].acc * dt;
-        if ((reg.transforms[e].pos + reg.transforms[e].vel * dt).y < 0.f) {
-          reg.transforms[e].vel.y = 0.f;
+        //TODO: probably can move isMovable elsewhere and check it first before applying physics
+        if (reg.collision_boxes.contains(e) && reg.collision_boxes.at(e).isMovable){
+          //1. check for collision
+          auto& currentObjectCollisionBox = reg.collision_boxes.at(e).box;
+          reg.collision_boxes.at(e).isColliding = false;
+          for(auto &[entityID, collider] : reg.collision_boxes){
+            // ignore self collision
+            if(entityID == e){
+              continue;
+            }
+            auto possibleDisplacement = reg.transforms[e].vel * dt;
+            AABB boxAfterMovement(currentObjectCollisionBox);
+            boxAfterMovement.move(possibleDisplacement);
+
+            
+            AABBManifold m = collideAABBvAABB_Manifold(boxAfterMovement,collider.box, /*EPS= */1e-3f);
+            if (m.colliding) {
+                reg.collision_boxes.at(e).isColliding = true;
+                glm::vec3 mtv = m.normal;// * m.depth; // move A by -mtv to separate, or move both proportionally
+                auto objVelocity = reg.transforms[e].vel;
+                mtv.x *= std::abs(objVelocity.x);
+                mtv.y *= std::abs(objVelocity.y);
+                mtv.z *= std::abs(objVelocity.z);
+                reg.transforms[e].vel -= mtv;
+            }
+
+            if(false && doesCollideAABBvAABB(boxAfterMovement,collider.box)){
+              reg.collision_boxes.at(e).isColliding = true;
+              auto collisionDirection = getCollisionDirection(boxAfterMovement,collider.box);
+              auto objVelocity = reg.transforms[e].vel;
+              collisionDirection.x *= objVelocity.x;
+              collisionDirection.y *= objVelocity.y;
+              collisionDirection.z *= objVelocity.z;
+              //2. reduce collision velocity component to zero
+              reg.transforms[e].vel -= collisionDirection;
+            }
+          }
+          //3. move collision box according to movement
+          auto collisionBoxDisplacement = reg.transforms[e].vel * dt;
+          currentObjectCollisionBox.move(collisionBoxDisplacement);
         }
         reg.transforms[e].pos += reg.transforms[e].vel * dt;
         reg.transforms[e].rotationInDegrees +=

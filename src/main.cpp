@@ -34,12 +34,12 @@
 #include "Player.h"
 #include "PointLight.h"
 #include "Shader.h"
+#include "Skybox.h"
 #include "Spotlight.h"
 #include "Text.h"
 #include "Texture.h"
-#include "Window.h"
-#include "Skybox.h"
 #include "Utility.h"
+#include "Window.h"
 
 #include <assimp/Importer.hpp>
 
@@ -49,7 +49,7 @@ GLfloat lastTime                = 0.0f;
 GLfloat lastTimeTextWasRendered = 0.0f;
 constexpr GLfloat textTickRate  = 10.0f;
 std::string timeStr, FPSStr;
-std::string cameraLocStr, cameraFacingStr, entityCountStr;
+std::string cameraLocStr, cameraFacingStr, entityCountStr, playerCollisionBoxStr, groundCollisionBoxStr;
 
 // settings
 const unsigned int SCR_WIDTH  = 1366;
@@ -65,8 +65,6 @@ void errorMessageCallback([[maybe_unused]] GLenum source,
                           [[maybe_unused]] const void* userParam) {
   // std::println("errorMessageCallback was called with message: {}",message);
 }
-
-
 
 // TODO: move this to a class
 const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
@@ -117,7 +115,6 @@ void render(model_system& ms, registry& componentRegistry,
   glBindTexture(GL_TEXTURE_2D, depthMap);
   ms.render(componentRegistry, shader);
 };
-
 
 int main() {
   {
@@ -182,7 +179,7 @@ int main() {
     // Check path
     auto projectPath = std::filesystem::current_path();
     if (!isValidProjectPath(projectPath)) {
-      std::println(stderr,"Error occured while validating project path!");
+      std::println(stderr, "Error occured while validating project path!");
       return -1;
     }
 
@@ -341,9 +338,9 @@ int main() {
 
     componentRegistry.transforms[playerEntityID] = transform_component{
 
-        .pos               = glm::vec3{0.f},
+        .pos               = glm::vec3{0.f, 2.f, 0.f},
         .vel               = glm::vec3{0.f},
-        .acc               = glm::vec3{0.f, -10.f, 0.f},
+        .acc               = glm::vec3{0.f, -0.f, 0.f},
         .rot               = {0.0f, 1.0f, 0.0f},
         .scale             = glm::vec3{1.f},
         .rotationInDegrees = 0.f,
@@ -351,47 +348,60 @@ int main() {
 
     };
 
+
+    auto playerPos = componentRegistry.transforms[playerEntityID].pos;
+    componentRegistry.collision_boxes[playerEntityID] = collision_component{
+        .box = {playerPos + glm::vec3{-0.5f, 0.f, -0.5f}, playerPos + glm::vec3{0.5f, 1.0f, 0.5f}},
+        .isMovable = {true}};
+
     auto player = Player(playerEntityID, playerRegistryRef, playerCamera);
 
-    addEntity(cube, dullMaterial, brickTexture,
-              transform_component{.pos   = {-10.0f, -2.0005f, -10.0f},
-                                  .vel   = glm::vec3{0.f},
-                                  .rot   = {0.0f, 1.0f, 0.0f},
-                                  .scale = glm::vec3{20.f, 0.01f, 20.f},
-                                  .rotationInDegrees = 0.f,
-                                  .rotationvel       = 0.f});
+    // floor
+    auto floorEntityID =
+        addEntity(cube, dullMaterial, brickTexture,
+                  transform_component{.pos   = {-10.0f, -2.0f, -10.0f},
+                                      .vel   = glm::vec3{0.f},
+                                      .rot   = {0.0f, 1.0f, 0.0f},
+                                      .scale = glm::vec3{20.f, 0.01f, 20.f},
+                                      .rotationInDegrees = 0.f,
+                                      .rotationvel       = 0.f});
 
-    addEntity(sphere, dullMaterial, brickTexture,
-              transform_component{.pos               = {-3.0f, 1.0f, -1.0f},
-                                  .vel               = glm::vec3{0.f},
-                                  .rot               = {0.0f, 1.0f, 0.0f},
-                                  .scale             = glm::vec3{1.f},
-                                  .rotationInDegrees = 0.f,
-                                  .rotationvel       = 0.f});
+    componentRegistry.collision_boxes[floorEntityID] =
+        collision_component{.box       = {glm::vec3{-10.0f, -12.0f, -10.0f},
+                                          glm::vec3{10.0f, -2.0f, 10.0f}},
+                            .isMovable = {false}};
 
-    addEntity(cube, dullMaterial, brickTexture,
-              transform_component{.pos               = {-2.0f, 1.0f, -3.0f},
-                                  .vel               = glm::vec3{0.f},
-                                  .rot               = {0.0f, 1.0f, 0.0f},
-                                  .scale             = glm::vec3{1.f},
-                                  .rotationInDegrees = 0.f,
-                                  .rotationvel       = 0.f});
+    // addEntity(sphere, dullMaterial, brickTexture,
+    //           transform_component{.pos               = {-3.0f, 1.0f, -1.0f},
+    //                               .vel               = glm::vec3{0.f},
+    //                               .rot               = {0.0f, 1.0f, 0.0f},
+    //                               .scale             = glm::vec3{1.f},
+    //                               .rotationInDegrees = 0.f,
+    //                               .rotationvel       = 0.f});
 
-    addEntity(pyramid, shinyMaterial, brickTexture,
-              transform_component{.pos               = {0.0f, -1.0f, -3.0f},
-                                  .vel               = glm::vec3{0.f},
-                                  .rot               = {0.0f, 1.0f, 0.0f},
-                                  .scale             = glm::vec3{1.f},
-                                  .rotationInDegrees = 0.f,
-                                  .rotationvel       = 10.f});
+    // addEntity(cube, dullMaterial, brickTexture,
+    //           transform_component{.pos               = {-2.0f, 1.0f, -3.0f},
+    //                               .vel               = glm::vec3{0.f},
+    //                               .rot               = {0.0f, 1.0f, 0.0f},
+    //                               .scale             = glm::vec3{1.f},
+    //                               .rotationInDegrees = 0.f,
+    //                               .rotationvel       = 0.f});
 
-    addEntity(pyramid, dullMaterial, dirtTexture,
-              transform_component{.pos               = {0.0f, 2.0f, -3.0f},
-                                  .vel               = glm::vec3{0.f},
-                                  .rot               = {1.0f, 0.0f, 0.0f},
-                                  .scale             = glm::vec3{0.5f},
-                                  .rotationInDegrees = 0.f,
-                                  .rotationvel       = 0.f});
+    // addEntity(pyramid, shinyMaterial, brickTexture,
+    //           transform_component{.pos               = {0.0f, -1.0f, -3.0f},
+    //                               .vel               = glm::vec3{0.f},
+    //                               .rot               = {0.0f, 1.0f, 0.0f},
+    //                               .scale             = glm::vec3{1.f},
+    //                               .rotationInDegrees = 0.f,
+    //                               .rotationvel       = 10.f});
+
+    // addEntity(pyramid, dullMaterial, dirtTexture,
+    //           transform_component{.pos               = {0.0f, 2.0f, -3.0f},
+    //                               .vel               = glm::vec3{0.f},
+    //                               .rot               = {1.0f, 0.0f, 0.0f},
+    //                               .scale             = glm::vec3{0.5f},
+    //                               .rotationInDegrees = 0.f,
+    //                               .rotationvel       = 0.f});
 
     // TODO: set the numbers based on a common header file
     shader.set1i(0, "diffuseTexture");
@@ -414,7 +424,7 @@ int main() {
     std::array<std::string_view, 6> cubemapFaces = {"right.jpg", "left.jpg",
                                                     "top.jpg",   "bottom.jpg",
                                                     "front.jpg", "back.jpg"};
-    Skybox skybox(skyboxShader,skyBoxPath,cubemapFaces);
+    Skybox skybox(skyboxShader, skyBoxPath, cubemapFaces);
     // create muzzleflash mesh
 
     std::vector<unsigned int> muzzleIndices{0, 1, 2, 1, 2, 3};
@@ -452,7 +462,7 @@ int main() {
       player.handleMouseInput(window.getXChange(), window.getYChange());
       player.update(deltaTime);
 
-      if (camera.isFlashlightOn()) {
+      if (true || camera.isFlashlightOn()) {
         spotLights[0].update(camera.getCameraPosition(),
                              camera.getCameraFront(), camera.getRight());
       } else {
@@ -519,6 +529,74 @@ int main() {
       line_shader.setMat4fv(projection, "projection");
       line_shader.use();
       line.render();
+
+      // render collision boxes
+      std::vector<Line> collisionBoxLines;
+      for (const auto& [entityID, collisionBox] :
+           componentRegistry.collision_boxes) {
+        //no collision color
+        glm::vec3 color = {0.f,1.f,0.f};
+        if(collisionBox.isColliding){
+          color = {1.f,0.f,0.f};
+        }
+        auto max = collisionBox.box.max;
+        auto min = collisionBox.box.min;
+        std::array<glm::vec3, 8> points;
+        points[0] = {max.x, max.y, max.z};
+        points[1] = {min.x, max.y, max.z};
+        points[2] = {max.x, max.y, min.z};
+        points[3] = {min.x, max.y, min.z};
+
+        points[4] = {max.x, min.y, max.z};
+        points[5] = {min.x, min.y, max.z};
+        points[6] = {max.x, min.y, min.z};
+        points[7] = {min.x, min.y, min.z};
+        Line l;
+        l.updateWithPosition(points[0], points[1], color);
+        collisionBoxLines.push_back(l);
+        l.updateWithPosition(points[1], points[3], color);
+        collisionBoxLines.push_back(l);
+        l.updateWithPosition(points[3], points[2], color);
+        collisionBoxLines.push_back(l);
+        l.updateWithPosition(points[2], points[0], color);
+        collisionBoxLines.push_back(l);
+
+        l.updateWithPosition(points[0 + 4], points[1 + 4], color);
+        collisionBoxLines.push_back(l);
+        l.updateWithPosition(points[1 + 4], points[3 + 4], color);
+        collisionBoxLines.push_back(l);
+        l.updateWithPosition(points[3 + 4], points[2 + 4], color);
+        collisionBoxLines.push_back(l);
+        l.updateWithPosition(points[2 + 4], points[0 + 4], color);
+        collisionBoxLines.push_back(l);
+
+        l.updateWithPosition(points[0], points[0 + 4], color);
+        collisionBoxLines.push_back(l);
+        l.updateWithPosition(points[1], points[1 + 4], color);
+        collisionBoxLines.push_back(l);
+        l.updateWithPosition(points[2], points[2 + 4], color);
+        collisionBoxLines.push_back(l);
+        l.updateWithPosition(points[3], points[3 + 4], color);
+        collisionBoxLines.push_back(l);
+
+        //cross lines
+        l.updateWithPosition(points[0], points[3], color);
+        collisionBoxLines.push_back(l);
+        l.updateWithPosition(points[0], points[5], color);
+        collisionBoxLines.push_back(l);
+        l.updateWithPosition(points[0], points[6], color);
+        collisionBoxLines.push_back(l);
+
+        l.updateWithPosition(points[7], points[1], color);
+        collisionBoxLines.push_back(l);
+        l.updateWithPosition(points[7], points[2], color);
+        collisionBoxLines.push_back(l);
+        l.updateWithPosition(points[7], points[4], color);
+        collisionBoxLines.push_back(l);
+      }
+      for (auto& line : collisionBoxLines) {
+        line.render();
+      }
 
       // ----Lighting pass-----
 
@@ -609,8 +687,8 @@ int main() {
       ak.Render();
       //----Viewmodel rendering-----
 
-      //TODO: create debug output handler class
-      // handle performance debug output
+      // TODO: create debug output handler class
+      //  handle performance debug output
       {
         if (now - lastTimeTextWasRendered > 1 / textTickRate) {
           lastTimeTextWasRendered = now;
@@ -626,6 +704,18 @@ int main() {
                             glm::to_string(camera.getCameraFront());
           entityCountStr =
               std::string("Entities: ") + std::to_string(MAX_ENTITY);
+          auto& playerCollisionBox =
+              componentRegistry.collision_boxes.at(playerEntityID);
+          playerCollisionBoxStr = std::string("Player box min: ") +
+                                  glm::to_string(playerCollisionBox.box.min) +
+                                  std::string(" max: ") +
+                                  glm::to_string(playerCollisionBox.box.max);
+          auto& groundCollisionBox =
+              componentRegistry.collision_boxes.at(playerEntityID+1);
+          groundCollisionBoxStr = std::string("Ground box min: ") +
+                                  glm::to_string(groundCollisionBox.box.min) +
+                                  std::string(" max: ") +
+                                  glm::to_string(groundCollisionBox.box.max);
         }
         //  ------ ADDING TEXT RENDER HERE ----------
         textrenderer.renderText(timeStr, 0.0f, SCR_HEIGHT - 24, 0.5f,
@@ -637,6 +727,10 @@ int main() {
         textrenderer.renderText(cameraFacingStr, 0.0f, SCR_HEIGHT - 4 * 24,
                                 0.5f, glm::vec3(1.0f, 1.0f, 1.0f));
         textrenderer.renderText(entityCountStr, 0.0f, SCR_HEIGHT - 5 * 24, 0.5f,
+                                glm::vec3(1.0f, 1.0f, 1.0f));
+        textrenderer.renderText(playerCollisionBoxStr, 0.0f, SCR_HEIGHT - 6 * 24, 0.5f,
+                                glm::vec3(1.0f, 1.0f, 1.0f));
+        textrenderer.renderText(groundCollisionBoxStr, 0.0f, SCR_HEIGHT - 7 * 24, 0.5f,
                                 glm::vec3(1.0f, 1.0f, 1.0f));
         // ------ ADDING TEXT RENDER HERE ----------
       }

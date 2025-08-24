@@ -8,7 +8,7 @@ void Player::handleMouseInput(float xChange, float yChange) {
 }
 
 void Player::handleKeyboardInput(bool* keys, float deltaTime) {
-  float moveSpeedModifier = 200.f;
+  float moveSpeedModifier = 400.f;
   float speed             = moveSpeedModifier * deltaTime;
   auto front              = m_PlayerCamera.getCameraFront();
   auto right              = m_PlayerCamera.getRight();
@@ -37,20 +37,22 @@ void Player::handleKeyboardInput(bool* keys, float deltaTime) {
     velocity += right * speed;
   }
   if (keys[GLFW_KEY_SPACE]) {
-    if(m_PlayerState != PLAYER_STATE::JUMPING){
-      velocity += m_PlayerCamera.getWorldUp() * speed * 5.f;
-      m_PlayerState = PLAYER_STATE::JUMPING;
-    }
+    // if(m_PlayerState != PLAYER_STATE::JUMPING){
+    //   velocity += m_PlayerCamera.getWorldUp() * speed * 5.f;
+    //   m_PlayerState = PLAYER_STATE::JUMPING;
+    // }
+    velocity += m_PlayerCamera.getWorldUp() * speed;
   }
-  /* if (keys[GLFW_KEY_LEFT_CONTROL]) { */
-  /*   velocity -= worldUp * speed; */
-  /* } */
+  if (keys[GLFW_KEY_LEFT_CONTROL]) { 
+     velocity -= m_PlayerCamera.getWorldUp() * speed;
+  } 
   /* if (keys[GLFW_KEY_F]) { */
   /*   invertFlashlight(); */
   /*   keys[GLFW_KEY_F] = false; */
   /* } */
   m_Registry.transforms[m_EntityID].vel.x = velocity.x;
-  m_Registry.transforms[m_EntityID].vel.y += velocity.y;
+  m_Registry.transforms[m_EntityID].vel.y = velocity.y;
+  //m_Registry.transforms[m_EntityID].vel.y += velocity.y;
   m_Registry.transforms[m_EntityID].vel.z = velocity.z;
 }
 
