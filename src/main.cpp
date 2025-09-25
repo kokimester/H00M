@@ -49,7 +49,7 @@ GLfloat lastTime                = 0.0f;
 GLfloat lastTimeTextWasRendered = 0.0f;
 constexpr GLfloat textTickRate  = 10.0f;
 std::string timeStr, FPSStr;
-std::string cameraLocStr, cameraFacingStr, entityCountStr, playerCollisionBoxStr, groundCollisionBoxStr;
+std::string cameraLocStr, cameraFacingStr, entityCountStr, playerPositionStr, playerVelocityStr;
 
 // settings
 const unsigned int SCR_WIDTH  = 1366;
@@ -340,7 +340,7 @@ int main() {
 
         .pos               = glm::vec3{0.f, 2.f, 0.f},
         .vel               = glm::vec3{0.f},
-        .acc               = glm::vec3{0.f, -0.f, 0.f},
+        .acc               = glm::vec3{0.f, -10.f, 0.f},
         .rot               = {0.0f, 1.0f, 0.0f},
         .scale             = glm::vec3{1.f},
         .rotationInDegrees = 0.f,
@@ -367,7 +367,7 @@ int main() {
                                       .rotationvel       = 0.f});
 
     componentRegistry.collision_boxes[floorEntityID] =
-        collision_component{.box       = {glm::vec3{-10.0f, -12.0f, -10.0f},
+        collision_component{.box       = {glm::vec3{-10.0f, -3.0f, -10.0f},
                                           glm::vec3{10.0f, -2.0f, 10.0f}},
                             .isMovable = {false}};
 
@@ -439,6 +439,10 @@ int main() {
     Mesh muzzleFlashMesh;
     muzzleFlashMesh.createMesh(muzzleVertices, muzzleIndices);
 
+
+    //need this here to not get a crazy first frame
+    //i was falling under the ground because of a large deltaTime
+    lastTime = glfwGetTime();
     while (!window.getShouldClose()) // returns true if window is closed
     {
       glEnable(GL_DEPTH_TEST);
@@ -704,18 +708,13 @@ int main() {
                             glm::to_string(camera.getCameraFront());
           entityCountStr =
               std::string("Entities: ") + std::to_string(MAX_ENTITY);
-          auto& playerCollisionBox =
-              componentRegistry.collision_boxes.at(playerEntityID);
-          playerCollisionBoxStr = std::string("Player box min: ") +
-                                  glm::to_string(playerCollisionBox.box.min) +
-                                  std::string(" max: ") +
-                                  glm::to_string(playerCollisionBox.box.max);
-          auto& groundCollisionBox =
-              componentRegistry.collision_boxes.at(playerEntityID+1);
-          groundCollisionBoxStr = std::string("Ground box min: ") +
-                                  glm::to_string(groundCollisionBox.box.min) +
-                                  std::string(" max: ") +
-                                  glm::to_string(groundCollisionBox.box.max);
+          auto playerPosition = player.getCamera().getCameraPosition();
+          playerPositionStr = std::string("Player position: ") +
+                                  glm::to_string(playerPosition);
+          auto& playerVelocity =
+              componentRegistry.transforms.at(playerEntityID).vel;
+          playerVelocityStr = std::string("Player velocity: ") +
+                                  glm::to_string(playerVelocity);
         }
         //  ------ ADDING TEXT RENDER HERE ----------
         textrenderer.renderText(timeStr, 0.0f, SCR_HEIGHT - 24, 0.5f,
@@ -728,9 +727,9 @@ int main() {
                                 0.5f, glm::vec3(1.0f, 1.0f, 1.0f));
         textrenderer.renderText(entityCountStr, 0.0f, SCR_HEIGHT - 5 * 24, 0.5f,
                                 glm::vec3(1.0f, 1.0f, 1.0f));
-        textrenderer.renderText(playerCollisionBoxStr, 0.0f, SCR_HEIGHT - 6 * 24, 0.5f,
+        textrenderer.renderText(playerPositionStr, 0.0f, SCR_HEIGHT - 6 * 24, 0.5f,
                                 glm::vec3(1.0f, 1.0f, 1.0f));
-        textrenderer.renderText(groundCollisionBoxStr, 0.0f, SCR_HEIGHT - 7 * 24, 0.5f,
+        textrenderer.renderText(playerVelocityStr, 0.0f, SCR_HEIGHT - 7 * 24, 0.5f,
                                 glm::vec3(1.0f, 1.0f, 1.0f));
         // ------ ADDING TEXT RENDER HERE ----------
       }

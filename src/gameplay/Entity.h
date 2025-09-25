@@ -26,9 +26,6 @@ struct AABB{
 bool doesCollidePointvAABB(const glm::vec3& point, const AABB& box);
 
 bool doesCollideAABBvAABB(const AABB& a,const AABB& b);
-
-glm::vec3 getCollisionDirection(const glm::vec3& a, const glm::vec3& b);
-
 glm::vec3 getCollisionDirection(const AABB& a,const AABB& b);
 
 struct collision_component {
@@ -37,14 +34,6 @@ struct collision_component {
   bool isColliding = false;
 };
 
-//chatgpt
-struct AABBManifold {
-    bool colliding = false;
-    glm::vec3 normal = glm::vec3(0.0f); // points from A to "out of B" along the MTD axis
-    float depth = 0.0f;                  // minimum translation depth along that axis
-};
-AABBManifold collideAABBvAABB_Manifold(const AABB& aIn, const AABB& bIn, float EPS = 0.0f);
-//chatgpt
 
 struct transform_component {
   glm::vec3 pos{0.f};
@@ -135,25 +124,13 @@ struct transform_system {
             AABB boxAfterMovement(currentObjectCollisionBox);
             boxAfterMovement.move(possibleDisplacement);
 
-            
-            AABBManifold m = collideAABBvAABB_Manifold(boxAfterMovement,collider.box, /*EPS= */1e-3f);
-            if (m.colliding) {
-                reg.collision_boxes.at(e).isColliding = true;
-                glm::vec3 mtv = m.normal;// * m.depth; // move A by -mtv to separate, or move both proportionally
-                auto objVelocity = reg.transforms[e].vel;
-                mtv.x *= std::abs(objVelocity.x);
-                mtv.y *= std::abs(objVelocity.y);
-                mtv.z *= std::abs(objVelocity.z);
-                reg.transforms[e].vel -= mtv;
-            }
-
-            if(false && doesCollideAABBvAABB(boxAfterMovement,collider.box)){
+            if(doesCollideAABBvAABB(boxAfterMovement,collider.box)){
               reg.collision_boxes.at(e).isColliding = true;
               auto collisionDirection = getCollisionDirection(boxAfterMovement,collider.box);
               auto objVelocity = reg.transforms[e].vel;
-              collisionDirection.x *= objVelocity.x;
-              collisionDirection.y *= objVelocity.y;
-              collisionDirection.z *= objVelocity.z;
+              collisionDirection.x *= std::abs(objVelocity.x);
+              collisionDirection.y *= std::abs(objVelocity.y);
+              collisionDirection.z *= std::abs(objVelocity.z);
               //2. reduce collision velocity component to zero
               reg.transforms[e].vel -= collisionDirection;
             }

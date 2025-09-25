@@ -37,22 +37,23 @@ void Player::handleKeyboardInput(bool* keys, float deltaTime) {
     velocity += right * speed;
   }
   if (keys[GLFW_KEY_SPACE]) {
-    // if(m_PlayerState != PLAYER_STATE::JUMPING){
-    //   velocity += m_PlayerCamera.getWorldUp() * speed * 5.f;
-    //   m_PlayerState = PLAYER_STATE::JUMPING;
-    // }
-    velocity += m_PlayerCamera.getWorldUp() * speed;
+    if(m_PlayerState != PLAYER_STATE::JUMPING){
+      velocity += m_PlayerCamera.getWorldUp() * speed * 1.f;
+      m_PlayerState = PLAYER_STATE::JUMPING;
+    }
+    //velocity += m_PlayerCamera.getWorldUp() * speed;
   }
-  if (keys[GLFW_KEY_LEFT_CONTROL]) { 
-     velocity -= m_PlayerCamera.getWorldUp() * speed;
-  } 
+  // if (keys[GLFW_KEY_LEFT_CONTROL]) { 
+  //    velocity -= m_PlayerCamera.getWorldUp() * speed;
+  // } 
   /* if (keys[GLFW_KEY_F]) { */
   /*   invertFlashlight(); */
   /*   keys[GLFW_KEY_F] = false; */
   /* } */
   m_Registry.transforms[m_EntityID].vel.x = velocity.x;
-  m_Registry.transforms[m_EntityID].vel.y = velocity.y;
-  //m_Registry.transforms[m_EntityID].vel.y += velocity.y;
+  //uncomment for flying
+  //m_Registry.transforms[m_EntityID].vel.y = velocity.y;
+  m_Registry.transforms[m_EntityID].vel.y += velocity.y;
   m_Registry.transforms[m_EntityID].vel.z = velocity.z;
 }
 
