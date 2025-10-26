@@ -15,25 +15,27 @@ inline EntityType create_entity() {
   MAX_ENTITY = entities;
   return entities;
 }
-struct AABB{
+struct AABB {
   glm::vec3 min, max;
   AABB() : min{0.f}, max{0.f} {}
   AABB(const glm::vec3 min, const glm::vec3 max) : min{min}, max{max} {}
   AABB(const AABB& theOther) = default;
-  void move(const glm::vec3& direction) { min += direction; max += direction; }
+  void move(const glm::vec3& direction) {
+    min += direction;
+    max += direction;
+  }
 };
 
 bool doesCollidePointvAABB(const glm::vec3& point, const AABB& box);
 
-bool doesCollideAABBvAABB(const AABB& a,const AABB& b);
-glm::vec3 getCollisionDirection(const AABB& a,const AABB& b);
+bool doesCollideAABBvAABB(const AABB& a, const AABB& b);
+glm::vec3 getCollisionDirection(const AABB& a, const AABB& b);
 
 struct collision_component {
   AABB box;
-  bool isMovable = false;
+  bool isMovable   = false;
   bool isColliding = false;
 };
-
 
 struct transform_component {
   glm::vec3 pos{0.f};
@@ -110,32 +112,35 @@ struct transform_system {
     for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
       if (reg.transforms.contains(e)) {
         reg.transforms[e].vel += reg.transforms[e].acc * dt;
-        //TODO: probably can move isMovable elsewhere and check it first before applying physics
-        if (reg.collision_boxes.contains(e) && reg.collision_boxes.at(e).isMovable){
-          //1. check for collision
-          auto& currentObjectCollisionBox = reg.collision_boxes.at(e).box;
+        // TODO: probably can move isMovable elsewhere and check it first before
+        // applying physics
+        if (reg.collision_boxes.contains(e) &&
+            reg.collision_boxes.at(e).isMovable) {
+          // 1. check for collision
+          auto& currentObjectCollisionBox       = reg.collision_boxes.at(e).box;
           reg.collision_boxes.at(e).isColliding = false;
-          for(auto &[entityID, collider] : reg.collision_boxes){
+          for (auto& [entityID, collider] : reg.collision_boxes) {
             // ignore self collision
-            if(entityID == e){
+            if (entityID == e) {
               continue;
             }
             auto possibleDisplacement = reg.transforms[e].vel * dt;
             AABB boxAfterMovement(currentObjectCollisionBox);
             boxAfterMovement.move(possibleDisplacement);
 
-            if(doesCollideAABBvAABB(boxAfterMovement,collider.box)){
+            if (doesCollideAABBvAABB(boxAfterMovement, collider.box)) {
               reg.collision_boxes.at(e).isColliding = true;
-              auto collisionDirection = getCollisionDirection(boxAfterMovement,collider.box);
+              auto collisionDirection =
+                  getCollisionDirection(boxAfterMovement, collider.box);
               auto objVelocity = reg.transforms[e].vel;
               collisionDirection.x *= std::abs(objVelocity.x);
               collisionDirection.y *= std::abs(objVelocity.y);
               collisionDirection.z *= std::abs(objVelocity.z);
-              //2. reduce collision velocity component to zero
+              // 2. reduce collision velocity component to zero
               reg.transforms[e].vel -= collisionDirection;
             }
           }
-          //3. move collision box according to movement
+          // 3. move collision box according to movement
           auto collisionBoxDisplacement = reg.transforms[e].vel * dt;
           currentObjectCollisionBox.move(collisionBoxDisplacement);
         }
