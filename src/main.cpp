@@ -9,6 +9,7 @@
 
 #include <cmath>
 #include <exception>
+#include <future>
 #include <math.h>
 #include <stdexcept>
 #include <stdlib.h>
@@ -49,7 +50,8 @@ GLfloat lastTime                = 0.0f;
 GLfloat lastTimeTextWasRendered = 0.0f;
 constexpr GLfloat textTickRate  = 10.0f;
 std::string timeStr, FPSStr;
-std::string cameraLocStr, cameraFacingStr, entityCountStr, playerPositionStr, playerVelocityStr;
+std::string cameraLocStr, cameraFacingStr, entityCountStr, playerPositionStr,
+    playerVelocityStr;
 
 // settings
 const unsigned int SCR_WIDTH  = 1366;
@@ -191,24 +193,41 @@ int main() {
     Model ak;
     Model arm;
     fs::path modelDir = "models";
-    bool modelsLoaded = true;
-    std::println("Loading cube");
-    modelsLoaded &= cube.LoadMesh(projectPath / modelDir /
-                                  std::filesystem::path("cube-tex.obj"));
-    std::println("Loading pyramid");
-    modelsLoaded &= pyramid.LoadMesh(projectPath / modelDir /
-                                     std::filesystem::path("pyramid2.obj"));
-    std::println("Loading sphere");
-    modelsLoaded &= sphere.LoadMesh(projectPath / modelDir /
-                                    std::filesystem::path("sphere.obj"));
-    std::println("Loading viewmodel");
-    modelsLoaded &= ak.LoadMesh(projectPath / modelDir /
-                                std::filesystem::path("ak47.gltf"));
-    if (modelsLoaded == false) {
-      std::println("Models failed to load!");
-      return -1;
-    }
-    std::println("Loaded all models");
+
+    // assett loading multithreaded:
+    // https://www.reddit.com/r/opengl/comments/17httnd/help_with_loading_assets_with_multithreading/
+    auto modelsLambda = [&]() {
+      std::println("Loading models");
+      auto modelLoadStartTime = glfwGetTime();
+
+      bool modelsLoaded = true;
+      std::println("Loading cube");
+      modelsLoaded &= cube.LoadMesh(projectPath / modelDir /
+                                    std::filesystem::path("cube-tex.obj"));
+      std::println("Loading pyramid");
+      modelsLoaded &= pyramid.LoadMesh(projectPath / modelDir /
+                                       std::filesystem::path("pyramid2.obj"));
+      std::println("Loading sphere");
+      modelsLoaded &= sphere.LoadMesh(projectPath / modelDir /
+                                      std::filesystem::path("sphere.obj"));
+      std::println("Loading viewmodel");
+      modelsLoaded &= ak.LoadMesh(projectPath / modelDir /
+                                  std::filesystem::path("ak47.gltf"));
+      if (modelsLoaded == false) {
+        std::println("Models failed to load!");
+        // return -1;
+        return false;
+      }
+
+      std::println("Loaded models in {} ms.",
+                   (glfwGetTime() - modelLoadStartTime) * 1000.f);
+      return true;
+    };
+
+    modelsLambda();
+
+    std::println("Loading textures");
+    auto texturesLoadStartTime = glfwGetTime();
     // load textures
     Texture brickTexture("../textures/brick.png");
     brickTexture.loadTexture();
@@ -220,7 +239,8 @@ int main() {
     whiteTexture.loadTexture();
     Texture muzzleFlashTexture("../textures/muzzleflash.png");
     muzzleFlashTexture.loadTexture();
-    std::println("Loaded all textures");
+    std::println("Loaded textures in {} ms.",
+                 (glfwGetTime() - texturesLoadStartTime) * 1000.f);
 
     // material
     Material shinyMaterial = Material(4.0f, 256);
@@ -236,7 +256,8 @@ int main() {
     Shader muzzleFlashShader;
     // TODO: collect directories in one place
     std::string shaderDir = "shaders";
-
+    std::println("Loading shaders");
+    auto shaderLoadStartTime = glfwGetTime();
     if (loadshader(projectPath, shaderDir, "main", shader))
       return -1;
     if (loadshader(projectPath, shaderDir, "line", line_shader))
@@ -251,6 +272,8 @@ int main() {
       return -6;
     if (loadshader(projectPath, shaderDir, "muzzle", muzzleFlashShader))
       return -7;
+    std::println("Loaded shaders in {} ms.",
+                 (glfwGetTime() - shaderLoadStartTime) * 1000.f);
 
     glm::mat4 projection(1.f);
     projection =
@@ -314,6 +337,7 @@ int main() {
       return entityID;
     };
 
+    /*
     auto addEntities = [&](unsigned int count = 100) {
       if (MAX_ENTITY >= 20000) {
         std::cout << "Entity cap reached" << std::endl;
@@ -330,6 +354,7 @@ int main() {
                       .rotationvel       = 0.f});
       }
     };
+    */
     // add player entity, transform_component only
 
     auto playerEntityID     = create_entity();
@@ -348,11 +373,11 @@ int main() {
 
     };
 
-
     auto playerPos = componentRegistry.transforms[playerEntityID].pos;
-    componentRegistry.collision_boxes[playerEntityID] = collision_component{
-        .box = {playerPos + glm::vec3{-0.5f, 0.f, -0.5f}, playerPos + glm::vec3{0.5f, 1.0f, 0.5f}},
-        .isMovable = {true}};
+    componentRegistry.collision_boxes[playerEntityID] =
+        collision_component{.box = {playerPos + glm::vec3{-0.5f, 0.f, -0.5f},
+                                    playerPos + glm::vec3{0.5f, 1.0f, 0.5f}},
+                            .isMovable = true};
 
     auto player = Player(playerEntityID, playerRegistryRef, playerCamera);
 
@@ -369,39 +394,44 @@ int main() {
     componentRegistry.collision_boxes[floorEntityID] =
         collision_component{.box       = {glm::vec3{-10.0f, -3.0f, -10.0f},
                                           glm::vec3{10.0f, -2.0f, 10.0f}},
-                            .isMovable = {false}};
+                            .isMovable = false};
 
-    // addEntity(sphere, dullMaterial, brickTexture,
-    //           transform_component{.pos               = {-3.0f, 1.0f, -1.0f},
-    //                               .vel               = glm::vec3{0.f},
-    //                               .rot               = {0.0f, 1.0f, 0.0f},
-    //                               .scale             = glm::vec3{1.f},
-    //                               .rotationInDegrees = 0.f,
-    //                               .rotationvel       = 0.f});
+    addEntity(sphere, dullMaterial, brickTexture,
+              transform_component{.pos               = {-3.0f, 1.0f, -1.0f},
+                                  .vel               = glm::vec3{0.f},
+                                  .rot               = {0.0f, 1.0f, 0.0f},
+                                  .scale             = glm::vec3{1.f},
+                                  .rotationInDegrees = 0.f,
+                                  .rotationvel       = 0.f});
 
-    // addEntity(cube, dullMaterial, brickTexture,
-    //           transform_component{.pos               = {-2.0f, 1.0f, -3.0f},
-    //                               .vel               = glm::vec3{0.f},
-    //                               .rot               = {0.0f, 1.0f, 0.0f},
-    //                               .scale             = glm::vec3{1.f},
-    //                               .rotationInDegrees = 0.f,
-    //                               .rotationvel       = 0.f});
+    auto boxEntityID =
+        addEntity(cube, dullMaterial, brickTexture,
+                  transform_component{.pos   = {-2.0f, -2.0f, -1.0f},
+                                      .vel   = glm::vec3{0.f},
+                                      .rot   = {0.0f, 1.0f, 0.0f},
+                                      .scale = glm::vec3{1.f},
+                                      .rotationInDegrees = 0.f,
+                                      .rotationvel       = 0.f});
 
-    // addEntity(pyramid, shinyMaterial, brickTexture,
-    //           transform_component{.pos               = {0.0f, -1.0f, -3.0f},
-    //                               .vel               = glm::vec3{0.f},
-    //                               .rot               = {0.0f, 1.0f, 0.0f},
-    //                               .scale             = glm::vec3{1.f},
-    //                               .rotationInDegrees = 0.f,
-    //                               .rotationvel       = 10.f});
+    componentRegistry.collision_boxes[boxEntityID] = collision_component{
+        .box = {glm::vec3{-2.0f, -2.0f, -1.0f}, glm::vec3{-1.0f, -1.0f, 0.0f}},
+        .isMovable = false};
 
-    // addEntity(pyramid, dullMaterial, dirtTexture,
-    //           transform_component{.pos               = {0.0f, 2.0f, -3.0f},
-    //                               .vel               = glm::vec3{0.f},
-    //                               .rot               = {1.0f, 0.0f, 0.0f},
-    //                               .scale             = glm::vec3{0.5f},
-    //                               .rotationInDegrees = 0.f,
-    //                               .rotationvel       = 0.f});
+    addEntity(pyramid, shinyMaterial, brickTexture,
+              transform_component{.pos               = {0.0f, -1.0f, -3.0f},
+                                  .vel               = glm::vec3{0.f},
+                                  .rot               = {0.0f, 1.0f, 0.0f},
+                                  .scale             = glm::vec3{1.f},
+                                  .rotationInDegrees = 0.f,
+                                  .rotationvel       = 10.f});
+
+    addEntity(pyramid, dullMaterial, dirtTexture,
+              transform_component{.pos               = {0.0f, 2.0f, -3.0f},
+                                  .vel               = glm::vec3{0.f},
+                                  .rot               = {1.0f, 0.0f, 0.0f},
+                                  .scale             = glm::vec3{0.5f},
+                                  .rotationInDegrees = 0.f,
+                                  .rotationvel       = 0.f});
 
     // TODO: set the numbers based on a common header file
     shader.set1i(0, "diffuseTexture");
@@ -439,9 +469,8 @@ int main() {
     Mesh muzzleFlashMesh;
     muzzleFlashMesh.createMesh(muzzleVertices, muzzleIndices);
 
-
-    //need this here to not get a crazy first frame
-    //i was falling under the ground because of a large deltaTime
+    // need this here to not get a crazy first frame
+    // i was falling under the ground because of a large deltaTime
     lastTime = glfwGetTime();
     while (!window.getShouldClose()) // returns true if window is closed
     {
@@ -534,73 +563,7 @@ int main() {
       line_shader.use();
       line.render();
 
-      // render collision boxes
-      std::vector<Line> collisionBoxLines;
-      for (const auto& [entityID, collisionBox] :
-           componentRegistry.collision_boxes) {
-        //no collision color
-        glm::vec3 color = {0.f,1.f,0.f};
-        if(collisionBox.isColliding){
-          color = {1.f,0.f,0.f};
-        }
-        auto max = collisionBox.box.max;
-        auto min = collisionBox.box.min;
-        std::array<glm::vec3, 8> points;
-        points[0] = {max.x, max.y, max.z};
-        points[1] = {min.x, max.y, max.z};
-        points[2] = {max.x, max.y, min.z};
-        points[3] = {min.x, max.y, min.z};
-
-        points[4] = {max.x, min.y, max.z};
-        points[5] = {min.x, min.y, max.z};
-        points[6] = {max.x, min.y, min.z};
-        points[7] = {min.x, min.y, min.z};
-        Line l;
-        l.updateWithPosition(points[0], points[1], color);
-        collisionBoxLines.push_back(l);
-        l.updateWithPosition(points[1], points[3], color);
-        collisionBoxLines.push_back(l);
-        l.updateWithPosition(points[3], points[2], color);
-        collisionBoxLines.push_back(l);
-        l.updateWithPosition(points[2], points[0], color);
-        collisionBoxLines.push_back(l);
-
-        l.updateWithPosition(points[0 + 4], points[1 + 4], color);
-        collisionBoxLines.push_back(l);
-        l.updateWithPosition(points[1 + 4], points[3 + 4], color);
-        collisionBoxLines.push_back(l);
-        l.updateWithPosition(points[3 + 4], points[2 + 4], color);
-        collisionBoxLines.push_back(l);
-        l.updateWithPosition(points[2 + 4], points[0 + 4], color);
-        collisionBoxLines.push_back(l);
-
-        l.updateWithPosition(points[0], points[0 + 4], color);
-        collisionBoxLines.push_back(l);
-        l.updateWithPosition(points[1], points[1 + 4], color);
-        collisionBoxLines.push_back(l);
-        l.updateWithPosition(points[2], points[2 + 4], color);
-        collisionBoxLines.push_back(l);
-        l.updateWithPosition(points[3], points[3 + 4], color);
-        collisionBoxLines.push_back(l);
-
-        //cross lines
-        l.updateWithPosition(points[0], points[3], color);
-        collisionBoxLines.push_back(l);
-        l.updateWithPosition(points[0], points[5], color);
-        collisionBoxLines.push_back(l);
-        l.updateWithPosition(points[0], points[6], color);
-        collisionBoxLines.push_back(l);
-
-        l.updateWithPosition(points[7], points[1], color);
-        collisionBoxLines.push_back(l);
-        l.updateWithPosition(points[7], points[2], color);
-        collisionBoxLines.push_back(l);
-        l.updateWithPosition(points[7], points[4], color);
-        collisionBoxLines.push_back(l);
-      }
-      for (auto& line : collisionBoxLines) {
-        line.render();
-      }
+      renderCollisionBoxes(componentRegistry);
 
       // ----Lighting pass-----
 
@@ -709,12 +672,12 @@ int main() {
           entityCountStr =
               std::string("Entities: ") + std::to_string(MAX_ENTITY);
           auto playerPosition = player.getCamera().getCameraPosition();
-          playerPositionStr = std::string("Player position: ") +
-                                  glm::to_string(playerPosition);
+          playerPositionStr =
+              std::string("Player position: ") + glm::to_string(playerPosition);
           auto& playerVelocity =
               componentRegistry.transforms.at(playerEntityID).vel;
-          playerVelocityStr = std::string("Player velocity: ") +
-                                  glm::to_string(playerVelocity);
+          playerVelocityStr =
+              std::string("Player velocity: ") + glm::to_string(playerVelocity);
         }
         //  ------ ADDING TEXT RENDER HERE ----------
         textrenderer.renderText(timeStr, 0.0f, SCR_HEIGHT - 24, 0.5f,
@@ -727,10 +690,10 @@ int main() {
                                 0.5f, glm::vec3(1.0f, 1.0f, 1.0f));
         textrenderer.renderText(entityCountStr, 0.0f, SCR_HEIGHT - 5 * 24, 0.5f,
                                 glm::vec3(1.0f, 1.0f, 1.0f));
-        textrenderer.renderText(playerPositionStr, 0.0f, SCR_HEIGHT - 6 * 24, 0.5f,
-                                glm::vec3(1.0f, 1.0f, 1.0f));
-        textrenderer.renderText(playerVelocityStr, 0.0f, SCR_HEIGHT - 7 * 24, 0.5f,
-                                glm::vec3(1.0f, 1.0f, 1.0f));
+        textrenderer.renderText(playerPositionStr, 0.0f, SCR_HEIGHT - 6 * 24,
+                                0.5f, glm::vec3(1.0f, 1.0f, 1.0f));
+        textrenderer.renderText(playerVelocityStr, 0.0f, SCR_HEIGHT - 7 * 24,
+                                0.5f, glm::vec3(1.0f, 1.0f, 1.0f));
         // ------ ADDING TEXT RENDER HERE ----------
       }
 
