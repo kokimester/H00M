@@ -1,4 +1,5 @@
 #pragma once
+#include "FileObserver.h"
 #include "Line.h"
 #include "Shader.h"
 #include <assimp/Importer.hpp>
@@ -13,6 +14,8 @@ glm::mat4 convertAssimpMatToGLM(const aiMatrix4x4& AssimpMatrix);
 glm::mat4 convertAssimpMatToGLM(const aiMatrix3x3& AssimpMatrix);
 
 bool isValidProjectPath(std::filesystem::path& projectPath);
+
+std::unique_ptr<FileObserver> fileObserverFactory();
 
 int loadshader(std::filesystem::path projectPath,
                const std::string& shaderDirStr, const std::string& shader_name,

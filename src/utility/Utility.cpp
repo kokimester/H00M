@@ -3,6 +3,14 @@
 #include <print>
 #include <string_view>
 
+#ifdef __linux__
+#include "FileObserverLinux.h"
+#elif _WIN32
+#include "FileObserverWindows.h"
+#else
+#error "Unsupported OS"
+#endif
+
 void handleGLerrors() {
   auto GLerrorToString = [](GLenum error) -> std::string_view {
     {
@@ -49,7 +57,17 @@ void handleGLerrors() {
   }
 }
 
-auto convertAssimpMatToGLM(const aiMatrix4x4 &AssimpMatrix) -> glm::mat4 {
+std::unique_ptr<FileObserver> fileObserverFactory() {
+#ifdef __linux__
+  return std::make_unique<FileObserverLinux>();
+#elif _WIN32
+  return std::make_unique<FileObserverWindows>();
+#else
+#error "Unsupported OS"
+#endif
+}
+
+auto convertAssimpMatToGLM(const aiMatrix4x4& AssimpMatrix) -> glm::mat4 {
   glm::mat4 m{1.f};
   m[0][0] = AssimpMatrix.a1;
   m[0][1] = AssimpMatrix.a2;
@@ -70,7 +88,7 @@ auto convertAssimpMatToGLM(const aiMatrix4x4 &AssimpMatrix) -> glm::mat4 {
   return m;
 }
 
-auto convertAssimpMatToGLM(const aiMatrix3x3 &AssimpMatrix) -> glm::mat4 {
+auto convertAssimpMatToGLM(const aiMatrix3x3& AssimpMatrix) -> glm::mat4 {
   glm::mat4 m{1.f};
   m[0][0] = AssimpMatrix.a1;
   m[0][1] = AssimpMatrix.a2;
@@ -91,10 +109,10 @@ auto convertAssimpMatToGLM(const aiMatrix3x3 &AssimpMatrix) -> glm::mat4 {
   return m;
 };
 
-int validateShaderFiles(const std::filesystem::path& projectPath, 
+int validateShaderFiles(const std::filesystem::path& projectPath,
                         const std::filesystem::path& shaderDir,
                         const std::filesystem::path& vertexShaderFile,
-                        const std::filesystem::path& fragmentShaderFile, 
+                        const std::filesystem::path& fragmentShaderFile,
                         Shader& shader) {
   auto vertexPath   = projectPath / shaderDir / vertexShaderFile;
   auto fragmentPath = projectPath / shaderDir / fragmentShaderFile;
@@ -133,7 +151,7 @@ int loadshader(std::filesystem::path projectPath,
 };
 
 bool isValidProjectPath(std::filesystem::path& projectPath) {
-  //TODO: move this elsewhere
+  // TODO: move this elsewhere
   std::string_view projectName = "H00M";
   while (projectPath != projectPath.root_path() &&
          projectPath.filename() != projectName) {

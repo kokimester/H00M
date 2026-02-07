@@ -44,6 +44,14 @@
 
 #include <assimp/Importer.hpp>
 
+#ifdef __linux__
+#include <sys/inotify.h>
+#elif _WIN32
+#error "TODO file system API"
+#else
+#error "Not supported OS"
+#endif
+
 // TODO: Globals, move somewhere else, as static perhaps
 GLfloat deltaTime               = 0.0f;
 GLfloat lastTime                = 0.0f;
@@ -179,7 +187,7 @@ int main() {
     /* spotLightCount++; */
 
     // Check path
-    auto projectPath = std::filesystem::current_path();
+    auto projectPath = fs::current_path();
     if (!isValidProjectPath(projectPath)) {
       std::println(stderr, "Error occured while validating project path!");
       return -1;
@@ -202,17 +210,17 @@ int main() {
 
       bool modelsLoaded = true;
       std::println("Loading cube");
-      modelsLoaded &= cube.LoadMesh(projectPath / modelDir /
-                                    std::filesystem::path("cube-tex.obj"));
+      modelsLoaded &=
+          cube.LoadMesh(projectPath / modelDir / fs::path("cube-tex.obj"));
       std::println("Loading pyramid");
-      modelsLoaded &= pyramid.LoadMesh(projectPath / modelDir /
-                                       std::filesystem::path("pyramid2.obj"));
+      modelsLoaded &=
+          pyramid.LoadMesh(projectPath / modelDir / fs::path("pyramid2.obj"));
       std::println("Loading sphere");
-      modelsLoaded &= sphere.LoadMesh(projectPath / modelDir /
-                                      std::filesystem::path("sphere.obj"));
+      modelsLoaded &=
+          sphere.LoadMesh(projectPath / modelDir / fs::path("sphere.obj"));
       std::println("Loading viewmodel");
-      modelsLoaded &= ak.LoadMesh(projectPath / modelDir /
-                                  std::filesystem::path("ak47.gltf"));
+      modelsLoaded &=
+          ak.LoadMesh(projectPath / modelDir / fs::path("ak47.gltf"));
       if (modelsLoaded == false) {
         std::println("Models failed to load!");
         // return -1;
@@ -275,6 +283,44 @@ int main() {
     std::println("Loaded shaders in {} ms.",
                  (glfwGetTime() - shaderLoadStartTime) * 1000.f);
 
+    // shader file observers
+    std::vector<std::unique_ptr<FileObserver>> observers;
+    observers.emplace_back(fileObserverFactory());
+    observers.back()->add_watch(projectPath / shaderDir / "main.vert");
+    observers.back()->add_watch(projectPath / shaderDir / "main.frag");
+    observers.back()->subscribe(&shader);
+
+    observers.emplace_back(fileObserverFactory());
+    observers.back()->add_watch(projectPath / shaderDir / "line.vert");
+    observers.back()->add_watch(projectPath / shaderDir / "line.frag");
+    observers.back()->subscribe(&line_shader);
+
+    observers.emplace_back(fileObserverFactory());
+    observers.back()->add_watch(projectPath / shaderDir / "depthShader.vert");
+    observers.back()->add_watch(projectPath / shaderDir / "depthShader.frag");
+    observers.back()->subscribe(&shadow_shader);
+
+    observers.emplace_back(fileObserverFactory());
+    observers.back()->add_watch(projectPath / shaderDir / "debugQuad.vert");
+    observers.back()->add_watch(projectPath / shaderDir / "debugQuad.frag");
+    observers.back()->subscribe(&debugDepthQuad);
+
+    observers.emplace_back(fileObserverFactory());
+    observers.back()->add_watch(projectPath / shaderDir / "skybox.vert");
+    observers.back()->add_watch(projectPath / shaderDir / "skybox.frag");
+    observers.back()->subscribe(&skyboxShader);
+
+    observers.emplace_back(fileObserverFactory());
+    observers.back()->add_watch(projectPath / shaderDir / "viewmodel.vert");
+    observers.back()->add_watch(projectPath / shaderDir / "viewmodel.frag");
+    observers.back()->subscribe(&viewmodelShader);
+
+    observers.emplace_back(fileObserverFactory());
+    observers.back()->add_watch(projectPath / shaderDir / "muzzle.vert");
+    observers.back()->add_watch(projectPath / shaderDir / "muzzle.frag");
+    observers.back()->subscribe(&muzzleFlashShader);
+    // shader file observers
+
     glm::mat4 projection(1.f);
     projection =
         glm::perspective(45.0f,
@@ -285,12 +331,11 @@ int main() {
     //------------------TEXT------------------
     TextRenderer textrenderer(SCR_WIDTH, SCR_HEIGHT);
 
-    auto textVertexShaderFile   = std::filesystem::path("text.vert");
-    auto textFragmentShaderFile = std::filesystem::path("text.frag");
+    auto textVertexShaderFile   = fs::path("text.vert");
+    auto textFragmentShaderFile = fs::path("text.frag");
     auto textVertexPath   = projectPath / shaderDir / textVertexShaderFile;
     auto textFragmentPath = projectPath / shaderDir / textFragmentShaderFile;
-    if (!std::filesystem::exists(textVertexPath) ||
-        !std::filesystem::exists(textFragmentPath)) {
+    if (!fs::exists(textVertexPath) || !fs::exists(textFragmentPath)) {
       std::cout << "ERROR::SHADER::TEXT Failed to load shader files."
                 << std::endl;
       std::cout << textVertexPath.string() << std::endl;
@@ -298,10 +343,10 @@ int main() {
       return -1;
     }
     //  find path to font
-    auto fontDir         = std::filesystem::path("fonts");
-    auto fontFile        = std::filesystem::path("Consolas-Bold.ttf");
+    auto fontDir         = fs::path("fonts");
+    auto fontFile        = fs::path("Consolas-Bold.ttf");
     auto defaultFontPath = projectPath / fontDir / fontFile;
-    if (!std::filesystem::exists(defaultFontPath)) {
+    if (!fs::exists(defaultFontPath)) {
       std::cout << "ERROR::FREETYPE: Failed to load font_name" << std::endl;
       return -1;
     }
@@ -696,6 +741,13 @@ int main() {
                                 0.5f, glm::vec3(1.0f, 1.0f, 1.0f));
         // ------ ADDING TEXT RENDER HERE ----------
       }
+      // ---- Poll shader file changes ----
+      std::for_each(observers.begin(), observers.end(),
+                    [](auto& observer) { observer->update(); });
+      // after reloading these uniforms need to be reset
+      shader.set1i(0, "diffuseTexture");
+      shader.set1i(1, "shadowMap");
+      // ---- Poll shader file changes ----
 
       // buffer swap(double buffering)
       window.swapBuffers();
