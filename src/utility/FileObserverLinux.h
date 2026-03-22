@@ -7,11 +7,7 @@
 class FileObserverLinux : public FileObserver {
 private:
   int fd = 0;
-  struct WatchItem {
-    fs::path file_path;
-    int watch_id;
-  };
-  std::vector<WatchItem> watchlist;
+  std::vector<WatchItem<int>> watchlist;
   // only for a single event, that is a file not a directory
   uint8_t buf[sizeof(struct inotify_event)];
 

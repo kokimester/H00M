@@ -47,7 +47,7 @@
 #ifdef __linux__
 #include <sys/inotify.h>
 #elif _WIN32
-#error "TODO file system API"
+
 #else
 #error "Not supported OS"
 #endif

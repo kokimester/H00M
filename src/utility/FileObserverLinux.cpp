@@ -1,3 +1,4 @@
+#ifdef __linux__
 #include "FileObserverLinux.h"
 #include <algorithm>
 #include <print>
@@ -18,9 +19,9 @@ void FileObserverLinux::add_watch(const fs::path& path) {
     // path is already added to watchlist, skip
     return;
   }
-  WatchItem wi{.file_path = path, .watch_id = 0};
-  wi.watch_id = inotify_add_watch(fd, path.string().c_str(), IN_CLOSE_WRITE);
-  if (wi.watch_id < 0) {
+  WatchItem wi{.file_path = path, .handle = 0};
+  wi.handle = inotify_add_watch(fd, path.string().c_str(), IN_CLOSE_WRITE);
+  if (wi.handle < 0) {
     std::println("Failed to create inotify watch!");
   }
   watchlist.push_back(wi);
@@ -33,7 +34,7 @@ void FileObserverLinux::remove_watch(const fs::path& path) {
     // path is not on the watch list
     return;
   }
-  if (inotify_rm_watch(fd, itr->watch_id) < 0) {
+  if (inotify_rm_watch(fd, itr->handle) < 0) {
     std::println("Failed to remove inotify watch!");
   }
   watchlist.erase(itr);
@@ -46,7 +47,7 @@ void FileObserverLinux::update() {
     event    = (const struct inotify_event*)buf;
     int wd   = event->wd;
     auto itr = std::find_if(watchlist.begin(), watchlist.end(),
-                            [&wd](auto& item) { return item.watch_id == wd; });
+                            [&wd](auto& item) { return item.handle == wd; });
     if (watchlist.end() != itr)
       std::println("Polled file changes: {}", itr->file_path.string());
     if (event->mask == IN_CLOSE_WRITE) {
@@ -55,3 +56,4 @@ void FileObserverLinux::update() {
     }
   }
 }
+#endif
