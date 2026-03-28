@@ -8,7 +8,7 @@
 #include <string>
 
 #include <cmath>
-#include <exception>
+// TODO: add parallelization for loading assets and shaders
 #include <future>
 #include <math.h>
 #include <stdexcept>
@@ -35,6 +35,7 @@
 #include "Player.h"
 #include "PointLight.h"
 #include "Shader.h"
+#include "ShadowMap.h"
 #include "Skybox.h"
 #include "Spotlight.h"
 #include "Text.h"
@@ -47,12 +48,12 @@
 #ifdef __linux__
 #include <sys/inotify.h>
 #elif _WIN32
-
 #else
 #error "Not supported OS"
 #endif
 
 // TODO: Globals, move somewhere else, as static perhaps
+
 GLfloat deltaTime               = 0.0f;
 GLfloat lastTime                = 0.0f;
 GLfloat lastTimeTextWasRendered = 0.0f;
@@ -62,9 +63,7 @@ std::string cameraLocStr, cameraFacingStr, entityCountStr, playerPositionStr,
     playerVelocityStr;
 
 // settings
-const unsigned int SCR_WIDTH  = 1366;
-const unsigned int SCR_HEIGHT = 768;
-namespace fs                  = std::filesystem;
+namespace fs = std::filesystem;
 
 void errorMessageCallback([[maybe_unused]] GLenum source,
                           [[maybe_unused]] GLenum type,
@@ -75,57 +74,7 @@ void errorMessageCallback([[maybe_unused]] GLenum source,
                           [[maybe_unused]] const void* userParam) {
   // std::println("errorMessageCallback was called with message: {}",message);
 }
-
-// TODO: move this to a class
-const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
-unsigned int depthMapFBO;
-unsigned int depthMap;
-void setupShadowTexture() {
-  glGenFramebuffers(1, &depthMapFBO);
-  glGenTextures(1, &depthMap);
-  glBindTexture(GL_TEXTURE_2D, depthMap);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH,
-               SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-  glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
-                         depthMap, 0);
-  glDrawBuffer(GL_NONE);
-  glReadBuffer(GL_NONE);
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
 // TODO: handle more light sources
-void render(model_system& ms, registry& componentRegistry,
-            Shader& shadow_shader, Shader& shader,
-            const glm::mat4& lightSpaceMatrix, unsigned int depthMapFBO,
-            unsigned int depthMap) {
-  // 1. first render to depth map
-  shadow_shader.setMat4fv(lightSpaceMatrix, "lightSpaceMatrix");
-  glCullFace(GL_FRONT);
-  glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
-  glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-  glClear(GL_DEPTH_BUFFER_BIT);
-  shadow_shader.use();
-  ms.render(componentRegistry, shadow_shader);
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  glCullFace(GL_BACK); // don't forget to reset original culling face
-
-  // 2. then render scene as normal with shadow mapping (using depth map)
-  glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-  shader.setMat4fv(lightSpaceMatrix, "lightSpaceMatrix");
-  // brickTexture.useTexture();
-  glActiveTexture(GL_TEXTURE1);
-  glBindTexture(GL_TEXTURE_2D, depthMap);
-  ms.render(componentRegistry, shader);
-};
-
 int main() {
   {
     Window window = Window(SCR_WIDTH, SCR_HEIGHT, GLFW_FALSE);
@@ -153,7 +102,7 @@ int main() {
 
     // light source
     DirectionalLight mainLight =
-        DirectionalLight({1.0f, 1.0f, 1.0f}, 0.5f, 0.7f, {0.0f, -1.0f, -1.0f});
+        DirectionalLight({1.0f, 1.0f, 1.0f}, 0.5f, 0.7f, {0.0f, -0.3f, -1.0f});
     PointLight pointLights[MAX_POINT_LIGHTS];
     Spotlight spotLights[MAX_SPOT_LIGHTS];
 
@@ -491,7 +440,9 @@ int main() {
 
     viewmodelShader.setupBones();
 
-    setupShadowTexture();
+    ShadowMap shadowmap;
+    shadowmap.setup();
+
     // setup cubemap for skybox
     fs::path textureDir("textures");
     fs::path skyboxDir("skybox");
@@ -583,14 +534,15 @@ int main() {
       glm::mat4 lightView =
           glm::lookAt(-10.f * mainLight.getDirection(),
                       glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-      auto& flashlight           = spotLights[0];
-      lightView                  = glm::lookAt(flashlight.getPos(),
-                                               flashlight.getPos() + flashlight.getDirection(),
-                                               glm::vec3(0.f, 1.f, 0.f));
+      // auto& flashlight           = spotLights[0];
+      // lightView                  = glm::lookAt(flashlight.getPos(),
+      //                                          flashlight.getPos() +
+      //                                          flashlight.getDirection(),
+      //                                          glm::vec3(0.f, 1.f, 0.f));
       glm::mat4 lightSpaceMatrix = lightProjection * lightView;
 
-      render(ms, componentRegistry, shadow_shader, shader, lightSpaceMatrix,
-             depthMapFBO, depthMap);
+      shadowmap.render(ms, componentRegistry, shadow_shader, shader,
+                       lightSpaceMatrix);
 
       // debug quad
       //  debugDepthQuad.use();

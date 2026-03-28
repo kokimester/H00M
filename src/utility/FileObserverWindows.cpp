@@ -1,65 +1,49 @@
+#ifdef WIN32
 #include "FileObserverWindows.h"
 #include <algorithm>
 #include <print>
-#include <unistd.h>
 #include <string>
+#include <unistd.h>
 
-void PrintCSBackupAPIErrorMessage(DWORD dwErr)
-{
+void PrintCSBackupAPIErrorMessage(DWORD dwErr) {
 
-    char   wszMsgBuff[512];  // Buffer for text.
+  char wszMsgBuff[512]; // Buffer for text.
 
-    DWORD   dwChars;  // Number of chars returned.
+  DWORD dwChars; // Number of chars returned.
 
-    // Try to get the message from the system errors.
-    dwChars = FormatMessage( FORMAT_MESSAGE_FROM_SYSTEM |
-                             FORMAT_MESSAGE_IGNORE_INSERTS,
-                             NULL,
-                             dwErr,
-                             0,
-                             wszMsgBuff,
-                             512,
-                             NULL );
+  // Try to get the message from the system errors.
+  dwChars =
+      FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                    NULL, dwErr, 0, wszMsgBuff, 512, NULL);
 
-    if (0 == dwChars)
-    {
-        // The error code did not exist in the system errors.
-        // Try Ntdsbmsg.dll for the error code.
+  if (0 == dwChars) {
+    // The error code did not exist in the system errors.
+    // Try Ntdsbmsg.dll for the error code.
 
-        HINSTANCE hInst;
+    HINSTANCE hInst;
 
-        // Load the library.
-        hInst = LoadLibrary("Ntdsbmsg.dll");
-        if ( NULL == hInst )
-        {
-            printf("cannot load Ntdsbmsg.dll\n");
-            exit(1);  // Could 'return' instead of 'exit'.
-        }
-
-        // Try getting message text from ntdsbmsg.
-        dwChars = FormatMessage( FORMAT_MESSAGE_FROM_HMODULE |
-                                 FORMAT_MESSAGE_IGNORE_INSERTS,
-                                 hInst,
-                                 dwErr,
-                                 0,
-                                 wszMsgBuff,
-                                 512,
-                                 NULL );
-
-        // Free the library.
-        FreeLibrary( hInst );
-
+    // Load the library.
+    hInst = LoadLibrary("Ntdsbmsg.dll");
+    if (NULL == hInst) {
+      printf("cannot load Ntdsbmsg.dll\n");
+      exit(1); // Could 'return' instead of 'exit'.
     }
 
-    // Display the error message, or generic text if not found.
-    printf("Error value: %d Message: %s\n",
-            dwErr,
-            dwChars ? wszMsgBuff : "Error message not found." );
+    // Try getting message text from ntdsbmsg.
+    dwChars = FormatMessage(FORMAT_MESSAGE_FROM_HMODULE |
+                                FORMAT_MESSAGE_IGNORE_INSERTS,
+                            hInst, dwErr, 0, wszMsgBuff, 512, NULL);
 
+    // Free the library.
+    FreeLibrary(hInst);
+  }
+
+  // Display the error message, or generic text if not found.
+  printf("Error value: %d Message: %s\n", dwErr,
+         dwChars ? wszMsgBuff : "Error message not found.");
 }
 
-FileObserverWindows::FileObserverWindows() {
-}
+FileObserverWindows::FileObserverWindows() {}
 
 void FileObserverWindows::add_watch(const fs::path& path) {
 
@@ -70,15 +54,18 @@ void FileObserverWindows::add_watch(const fs::path& path) {
     // path is already added to watchlist, skip
     return;
   }
-      auto directoryPath = path.string().substr(
-          0, path.string().find_last_of('\\'));
-      auto directoryHandle =
-          CreateFileA(directoryPath.c_str(), GENERIC_READ, FILE_SHARE_READ,
-                      nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, nullptr);
+  auto directoryPath =
+      path.string().substr(0, path.string().find_last_of('\\'));
+  auto directoryHandle =
+      CreateFileA(directoryPath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+                  OPEN_EXISTING,
+                  FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, nullptr);
 
-  if((INVALID_HANDLE_VALUE == directoryHandle) || (nullptr == directoryHandle)){
-    std::println("{}",path.string());
-    std::println("Failed to create Windows file notification handle : {}!", directoryHandle);
+  if ((INVALID_HANDLE_VALUE == directoryHandle) ||
+      (nullptr == directoryHandle)) {
+    std::println("{}", path.string());
+    std::println("Failed to create Windows file notification handle : {}!",
+                 directoryHandle);
     PrintCSBackupAPIErrorMessage(GetLastError());
     return;
   }
@@ -142,7 +129,7 @@ void FileObserverWindows::update() {
       std::println("Changes found at: {}", name);
       std::string_view observedFile = item.file_path.string();
       std::println("Subscribed file: {}", observedFile);
-      if(observedFile.ends_with(name)){
+      if (observedFile.ends_with(name)) {
         std::println("Found observed file! Notifying subscribers.");
         notify_subscribers();
       }
@@ -154,3 +141,4 @@ void FileObserverWindows::update() {
     resetWatch(item.handle); // re-arm for next poll
   });
 }
+#endif

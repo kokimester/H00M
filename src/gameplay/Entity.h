@@ -7,14 +7,11 @@
 #include <glm/glm.hpp>
 #include <unordered_map>
 
-using EntityType             = std::size_t;
-static EntityType MAX_ENTITY = 0;
-inline EntityType create_entity() {
-  static EntityType entities = 0;
-  ++entities;
-  MAX_ENTITY = entities;
-  return entities;
-}
+using EntityType = std::size_t;
+extern EntityType MAX_ENTITY; // extern, not static
+
+EntityType create_entity();
+
 struct AABB {
   glm::vec3 min, max;
   AABB() : min{0.f}, max{0.f} {}
@@ -66,88 +63,10 @@ struct registry {
 };
 
 struct model_system {
-
-  void update(registry& reg) {
-    for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
-      if (reg.models.contains(e) && reg.transforms.contains(e)) {
-        glm::mat4& modelMatrix  = reg.models.at(e).modelMat;
-        modelMatrix             = glm::mat4{1.f};
-        auto& modelPosition     = reg.transforms.at(e).pos;
-        auto& scale             = reg.transforms.at(e).scale;
-        auto& rotationInDegrees = reg.transforms.at(e).rotationInDegrees;
-        auto& rotation          = reg.transforms.at(e).rot;
-        auto& defaultrotation =
-            reg.models.at(e).modelDefaultOrientationRotation;
-        modelMatrix = glm::translate(modelMatrix, modelPosition);
-        modelMatrix = glm::scale(modelMatrix, scale);
-        // rotating the model by the loadoffset
-        modelMatrix = modelMatrix * defaultrotation;
-        modelMatrix =
-            glm::rotate(modelMatrix, glm::radians(rotationInDegrees), rotation);
-      }
-    }
-  }
-
-  void render(registry& reg, Shader& shader) {
-    for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
-      if (reg.models.contains(e)) {
-        auto& modelMatrix = reg.models.at(e).modelMat;
-        auto& model       = reg.models.at(e).model;
-        auto& material    = reg.models.at(e).material;
-        auto& texture     = reg.models.at(e).texture;
-        shader.setMat4fv(modelMatrix, "model");
-        shader.use();
-        texture.useTexture();
-        shader.useMaterial(material, "material.shininess",
-                           "material.specularIntensity");
-        model.Render();
-        shader.unuse();
-      }
-    }
-  }
+  void update(registry& reg);
+  void render(registry& reg, Shader& shader);
 };
 
 struct transform_system {
-  void update(registry& reg, float dt) {
-    for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
-      if (reg.transforms.contains(e)) {
-        reg.transforms[e].vel += reg.transforms[e].acc * dt;
-        // TODO: probably can move isMovable elsewhere and check it first before
-        // applying physics
-        if (reg.collision_boxes.contains(e) &&
-            reg.collision_boxes.at(e).isMovable) {
-          // 1. check for collision
-          auto& currentObjectCollisionBox       = reg.collision_boxes.at(e).box;
-          reg.collision_boxes.at(e).isColliding = false;
-          for (auto& [entityID, collider] : reg.collision_boxes) {
-            // ignore self collision
-            if (entityID == e) {
-              continue;
-            }
-            auto possibleDisplacement = reg.transforms[e].vel * dt;
-            AABB boxAfterMovement(currentObjectCollisionBox);
-            boxAfterMovement.move(possibleDisplacement);
-
-            if (doesCollideAABBvAABB(boxAfterMovement, collider.box)) {
-              reg.collision_boxes.at(e).isColliding = true;
-              auto collisionDirection =
-                  getCollisionDirection(boxAfterMovement, collider.box);
-              auto objVelocity = reg.transforms[e].vel;
-              collisionDirection.x *= std::abs(objVelocity.x);
-              collisionDirection.y *= std::abs(objVelocity.y);
-              collisionDirection.z *= std::abs(objVelocity.z);
-              // 2. reduce collision velocity component to zero
-              reg.transforms[e].vel -= collisionDirection;
-            }
-          }
-          // 3. move collision box according to movement
-          auto collisionBoxDisplacement = reg.transforms[e].vel * dt;
-          currentObjectCollisionBox.move(collisionBoxDisplacement);
-        }
-        reg.transforms[e].pos += reg.transforms[e].vel * dt;
-        reg.transforms[e].rotationInDegrees +=
-            reg.transforms[e].rotationvel * dt;
-      }
-    }
-  }
+  void update(registry& reg, float dt);
 };
