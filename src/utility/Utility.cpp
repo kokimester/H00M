@@ -1,6 +1,8 @@
 #include "Utility.h"
+#include <array>
 #include <glad/glad.h>
 #include <print>
+#include <ranges>
 #include <string_view>
 
 #ifdef __linux__
@@ -135,18 +137,20 @@ int validateShaderFiles(const std::filesystem::path& projectPath,
 }
 
 int loadshader(std::filesystem::path projectPath,
-               const std::string& shaderDirStr, const std::string& shader_name,
+               const std::string& shaderDirStr, std::string_view shaderName,
                Shader& shader) {
-  std::string vertexFileExt = ".vert";
-  std::string fragFileExt   = ".frag";
-  auto shaderDir            = std::filesystem::path(shaderDirStr);
-  auto vFile = std::filesystem::path(shader_name + vertexFileExt);
-  auto fFile = std::filesystem::path(shader_name + fragFileExt);
+  std::string_view vertexFileExt = ".vert";
+  std::string_view fragFileExt   = ".frag";
+  std::string vFilePath = std::string{shaderName} + std::string{vertexFileExt};
+  std::string fFilePath = std::string{shaderName} + std::string{fragFileExt};
+  auto shaderDir        = std::filesystem::path(shaderDirStr);
+  auto vFile            = std::filesystem::path(vFilePath);
+  auto fFile            = std::filesystem::path(fFilePath);
   if (validateShaderFiles(projectPath, shaderDir, vFile, fFile, shader)) {
     std::cout << "Error occured while validating shader files!\n";
     return -1;
   }
-  std::cout << "Succesfully built shader: " << shader_name << "\n";
+  std::cout << "Succesfully built shader: " << shaderName << "\n";
   return 0;
 };
 

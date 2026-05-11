@@ -73,18 +73,26 @@ bool Model::LoadMesh(const std::filesystem::path& path) {
   // TODO: fix this NUM_BUFFERS nonsense
   glGenBuffers(NUM_BUFFERS, m_Buffers);
 
-  bool initSuccess = false;
+  bool initSuccess   = false;
   unsigned int flags = aiProcess_Triangulate | aiProcess_FlipUVs;
   flags |= aiProcess_GenSmoothNormals | aiProcess_JoinIdenticalVertices;
 
-  m_Scene = m_Importer.ReadFile(Filename.c_str(), flags);
+  std::println("----Loading mesh {}", Filename);
+  double startTime = 0;
+  startTime        = glfwGetTime();
+  m_Scene          = m_Importer.ReadFile(Filename.c_str(), flags);
+  std::println("----Loaded file in {} ms",
+               (glfwGetTime() - startTime) * 1000.f);
 
   if (m_Scene) {
     m_GlobalInverseTransform =
         convertAssimpMatToGLM(m_Scene->mRootNode->mTransformation);
     m_GlobalInverseTransform = glm::inverse(m_GlobalInverseTransform);
-    std::println("Loading scene: {}", m_Scene->mName.C_Str());
+    std::println("----Loading scene: {}", m_Scene->mName.C_Str());
+    startTime   = glfwGetTime();
     initSuccess = InitFromScene();
+    std::println("----Loaded scene in {} ms",
+                 (glfwGetTime() - startTime) * 1000.f);
   } else {
     printf("Error parsing '%s': '%s'\n", Filename.c_str(),
            m_Importer.GetErrorString());
@@ -101,7 +109,7 @@ bool Model::InitFromScene() {
   m_TextureList.resize(m_Scene->mNumMaterials);
 
   unsigned int NumVertices = 0;
-  unsigned int NumIndices = 0;
+  unsigned int NumIndices  = 0;
 
   CountVerticesAndIndices(NumVertices, NumIndices);
 
@@ -126,9 +134,9 @@ void Model::CountVerticesAndIndices(unsigned int& NumVertices,
                                     unsigned int& NumIndices) {
   for (unsigned int i = 0; i < m_Meshes.size(); i++) {
     m_Meshes[i].MaterialIndex = m_Scene->mMeshes[i]->mMaterialIndex;
-    m_Meshes[i].NumIndices = m_Scene->mMeshes[i]->mNumFaces * 3;
-    m_Meshes[i].BaseVertex = NumVertices;
-    m_Meshes[i].BaseIndex = NumIndices;
+    m_Meshes[i].NumIndices    = m_Scene->mMeshes[i]->mNumFaces * 3;
+    m_Meshes[i].BaseVertex    = NumVertices;
+    m_Meshes[i].BaseIndex     = NumIndices;
 
     NumVertices += m_Scene->mMeshes[i]->mNumVertices;
     NumIndices += m_Meshes[i].NumIndices;
@@ -215,7 +223,7 @@ size_t Model::GetBoneId(const aiBone* pBone) {
 
   if (m_BoneNameToIndexMap.find(BoneName) == m_BoneNameToIndexMap.end()) {
     // Allocate an index for a new bone
-    BoneIndex = (size_t)m_BoneNameToIndexMap.size();
+    BoneIndex                      = (size_t)m_BoneNameToIndexMap.size();
     m_BoneNameToIndexMap[BoneName] = BoneIndex;
   } else {
     BoneIndex = m_BoneNameToIndexMap[BoneName];
@@ -285,8 +293,7 @@ void Model::Render() {
   glBindVertexArray(0);
 }
 
-const std::string& Model::GetActiveAnimationName() const 
-{
+const std::string& Model::GetActiveAnimationName() const {
   for (auto& it : m_AnimationNameToIndexMap) {
     if (it.second == m_ActiveAnimation) {
       return it.first;
@@ -296,50 +303,51 @@ const std::string& Model::GetActiveAnimationName() const
   assert(0 && "Animation not found");
 }
 
-void Model::SetActiveAnimation(const std::string& animation)  {
-  if(m_AnimationState == ANIMATION_STATE::IN_ANIMATION){
-    //TODO: here we can handle multiple animations styles
-    //e.g.: cancelable animations
-    //this solution makes every animation not cancellable
+void Model::SetActiveAnimation(const std::string& animation) {
+  if (m_AnimationState == ANIMATION_STATE::IN_ANIMATION) {
+    // TODO: here we can handle multiple animations styles
+    // e.g.: cancelable animations
+    // this solution makes every animation not cancellable
     return;
   }
-    //std::println("Setting animation to: {}", animation);
-    assert(m_AnimationNameToIndexMap.contains(animation) &&
-           "Animation not found");
-    m_ActiveAnimation = m_AnimationNameToIndexMap[animation];
-    m_AnimationState = ANIMATION_STATE::IN_ANIMATION;
-  }
+  // std::println("Setting animation to: {}", animation);
+  assert(m_AnimationNameToIndexMap.contains(animation) &&
+         "Animation not found");
+  m_ActiveAnimation = m_AnimationNameToIndexMap[animation];
+  m_AnimationState  = ANIMATION_STATE::IN_ANIMATION;
+}
 
-  void Model::Animate(GLfloat deltaTime) {
-    switch(m_AnimationState){
-      case ANIMATION_STATE::NO_ANIMATION:
-        break;
-      case ANIMATION_STATE::IN_ANIMATION:
-        m_AnimationTime += deltaTime;
-        if(m_AnimationTime * m_TicksPerSecond > m_Scene->mAnimations[m_ActiveAnimation]->mDuration){
-          m_AnimationState = ANIMATION_STATE::IDLE;
-          m_AnimationTime = 0.f;
-        }
-        break;
-      case ANIMATION_STATE::IDLE:
-        m_AnimationTime = 0.f;
-        break;
-      default:
-        break;
-    };
-  }
-
-  size_t Model::FindPosition(float AnimationTimeTicks,
-                             const aiNodeAnim* pNodeAnim) {
-    for (size_t i = 0; i < pNodeAnim->mNumPositionKeys - 1; i++) {
-      float t = (float)pNodeAnim->mPositionKeys[i + 1].mTime;
-      if (AnimationTimeTicks < t) {
-        return i;
-      }
+void Model::Animate(GLfloat deltaTime) {
+  switch (m_AnimationState) {
+  case ANIMATION_STATE::NO_ANIMATION:
+    break;
+  case ANIMATION_STATE::IN_ANIMATION:
+    m_AnimationTime += deltaTime;
+    if (m_AnimationTime * m_TicksPerSecond >
+        m_Scene->mAnimations[m_ActiveAnimation]->mDuration) {
+      m_AnimationState = ANIMATION_STATE::IDLE;
+      m_AnimationTime  = 0.f;
     }
+    break;
+  case ANIMATION_STATE::IDLE:
+    m_AnimationTime = 0.f;
+    break;
+  default:
+    break;
+  };
+}
 
-    return 0;
+size_t Model::FindPosition(float AnimationTimeTicks,
+                           const aiNodeAnim* pNodeAnim) {
+  for (size_t i = 0; i < pNodeAnim->mNumPositionKeys - 1; i++) {
+    float t = (float)pNodeAnim->mPositionKeys[i + 1].mTime;
+    if (AnimationTimeTicks < t) {
+      return i;
+    }
   }
+
+  return 0;
+}
 
 void Model::CalcInterpolatedPosition(aiVector3D& Out, float AnimationTimeTicks,
                                      const aiNodeAnim* pNodeAnim) {
@@ -349,18 +357,18 @@ void Model::CalcInterpolatedPosition(aiVector3D& Out, float AnimationTimeTicks,
     return;
   }
 
-  size_t PositionIndex = FindPosition(AnimationTimeTicks, pNodeAnim);
+  size_t PositionIndex     = FindPosition(AnimationTimeTicks, pNodeAnim);
   size_t NextPositionIndex = PositionIndex + 1;
   assert(NextPositionIndex < pNodeAnim->mNumPositionKeys);
-  float t1 = (float)pNodeAnim->mPositionKeys[PositionIndex].mTime;
-  float t2 = (float)pNodeAnim->mPositionKeys[NextPositionIndex].mTime;
+  float t1        = (float)pNodeAnim->mPositionKeys[PositionIndex].mTime;
+  float t2        = (float)pNodeAnim->mPositionKeys[NextPositionIndex].mTime;
   float DeltaTime = t2 - t1;
-  float Factor = (AnimationTimeTicks - t1) / DeltaTime;
+  float Factor    = (AnimationTimeTicks - t1) / DeltaTime;
   assert(Factor >= 0.0f && Factor <= 1.0f);
   const aiVector3D& Start = pNodeAnim->mPositionKeys[PositionIndex].mValue;
-  const aiVector3D& End = pNodeAnim->mPositionKeys[NextPositionIndex].mValue;
-  aiVector3D Delta = End - Start;
-  Out = Start + Factor * Delta;
+  const aiVector3D& End   = pNodeAnim->mPositionKeys[NextPositionIndex].mValue;
+  aiVector3D Delta        = End - Start;
+  Out                     = Start + Factor * Delta;
 }
 
 size_t Model::FindRotation(float AnimationTimeTicks,
@@ -386,13 +394,13 @@ void Model::CalcInterpolatedRotation(aiQuaternion& Out,
     return;
   }
 
-  size_t RotationIndex = FindRotation(AnimationTimeTicks, pNodeAnim);
+  size_t RotationIndex     = FindRotation(AnimationTimeTicks, pNodeAnim);
   size_t NextRotationIndex = RotationIndex + 1;
   assert(NextRotationIndex < pNodeAnim->mNumRotationKeys);
-  float t1 = (float)pNodeAnim->mRotationKeys[RotationIndex].mTime;
-  float t2 = (float)pNodeAnim->mRotationKeys[NextRotationIndex].mTime;
+  float t1        = (float)pNodeAnim->mRotationKeys[RotationIndex].mTime;
+  float t2        = (float)pNodeAnim->mRotationKeys[NextRotationIndex].mTime;
   float DeltaTime = t2 - t1;
-  float Factor = (AnimationTimeTicks - t1) / DeltaTime;
+  float Factor    = (AnimationTimeTicks - t1) / DeltaTime;
   assert(Factor >= 0.0f && Factor <= 1.0f);
   const aiQuaternion& StartRotationQ =
       pNodeAnim->mRotationKeys[RotationIndex].mValue;
@@ -424,18 +432,18 @@ void Model::CalcInterpolatedScaling(aiVector3D& Out, float AnimationTimeTicks,
     return;
   }
 
-  size_t ScalingIndex = FindScaling(AnimationTimeTicks, pNodeAnim);
+  size_t ScalingIndex     = FindScaling(AnimationTimeTicks, pNodeAnim);
   size_t NextScalingIndex = ScalingIndex + 1;
   assert(NextScalingIndex < pNodeAnim->mNumScalingKeys);
-  float t1 = (float)pNodeAnim->mScalingKeys[ScalingIndex].mTime;
-  float t2 = (float)pNodeAnim->mScalingKeys[NextScalingIndex].mTime;
+  float t1        = (float)pNodeAnim->mScalingKeys[ScalingIndex].mTime;
+  float t2        = (float)pNodeAnim->mScalingKeys[NextScalingIndex].mTime;
   float DeltaTime = t2 - t1;
-  float Factor = (AnimationTimeTicks - (float)t1) / DeltaTime;
+  float Factor    = (AnimationTimeTicks - (float)t1) / DeltaTime;
   assert(Factor >= 0.0f && Factor <= 1.0f);
   const aiVector3D& Start = pNodeAnim->mScalingKeys[ScalingIndex].mValue;
-  const aiVector3D& End = pNodeAnim->mScalingKeys[NextScalingIndex].mValue;
-  aiVector3D Delta = End - Start;
-  Out = Start + Factor * Delta;
+  const aiVector3D& End   = pNodeAnim->mScalingKeys[NextScalingIndex].mValue;
+  aiVector3D Delta        = End - Start;
+  Out                     = Start + Factor * Delta;
 }
 
 void Model::ReadNodeHierarchy(float AnimationTimeTicks, const aiNode* pNode,
@@ -462,10 +470,10 @@ void Model::ReadNodeHierarchy(float AnimationTimeTicks, const aiNode* pNode,
     aiQuaternion RotationQ;
     CalcInterpolatedRotation(RotationQ, AnimationTimeTicks, pNodeAnim);
     glm::quat q;
-    q.w = RotationQ.w;
-    q.x = RotationQ.x;
-    q.y = RotationQ.y;
-    q.z = RotationQ.z;
+    q.w                 = RotationQ.w;
+    q.x                 = RotationQ.x;
+    q.y                 = RotationQ.y;
+    q.z                 = RotationQ.z;
     glm::mat4 RotationM = glm::toMat4(q);
     // std::println("[{}] quaternion: {} {} {} {}",NodeName, RotationQ.x,
     // RotationQ.y, RotationQ.z, RotationQ.w); RotationM =
@@ -510,7 +518,7 @@ void Model::GetBoneTransforms(std::vector<glm::mat4>& Transforms) {
       (float)(m_Scene->mAnimations[m_ActiveAnimation]->mTicksPerSecond != 0
                   ? m_Scene->mAnimations[m_ActiveAnimation]->mTicksPerSecond
                   : 25.0f);
-  float TimeInTicks = m_AnimationTime * m_TicksPerSecond;
+  float TimeInTicks        = m_AnimationTime * m_TicksPerSecond;
   float AnimationTimeTicks = fmod(
       TimeInTicks, (float)m_Scene->mAnimations[m_ActiveAnimation]->mDuration);
 
@@ -522,10 +530,13 @@ void Model::GetBoneTransforms(std::vector<glm::mat4>& Transforms) {
   }
 }
 
-Model::ANIMATION_STATE Model::GetAnimationState() const { return m_AnimationState; }
+Model::ANIMATION_STATE Model::GetAnimationState() const {
+  return m_AnimationState;
+}
 
 float Model::GetAnimationProgress() const {
-  return m_AnimationTime * m_TicksPerSecond / m_Scene->mAnimations[m_ActiveAnimation]->mDuration;
+  return m_AnimationTime * m_TicksPerSecond /
+         m_Scene->mAnimations[m_ActiveAnimation]->mDuration;
 }
 
 const aiNodeAnim* Model::FindNodeAnim(const aiAnimation* pAnimation,

@@ -47,6 +47,29 @@ void model_system::render(registry& reg, Shader& shader) {
   }
 }
 
+void hitbox_system::update(registry& reg, const Line& hit_line) {
+  constexpr auto STEP = 0.01f;
+  auto line_start     = hit_line.getStart();
+  auto line_end       = hit_line.getEnd();
+  auto line_direction = line_end - line_start;
+  line_direction      = glm::normalize(line_direction);
+  const float LENGTH  = hit_line.getLength();
+  for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
+    if (reg.hitboxes.contains(e)) {
+      reg.hitboxes[e].isTargeted = false;
+      reg.hitboxes[e].color      = hitbox_component::NOT_TARGETED_COLOR;
+      for (auto iter = 0.f; iter < LENGTH; iter += STEP) {
+        if (doesCollidePointvAABB(line_start + iter * line_direction,
+                                  reg.hitboxes[e].box)) {
+          reg.hitboxes[e].isTargeted = true;
+          reg.hitboxes[e].color      = hitbox_component::TARGETED_COLOR;
+          break;
+        }
+      }
+    }
+  }
+}
+
 void transform_system::update(registry& reg, float dt) {
   for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
     if (reg.transforms.contains(e)) {
@@ -58,6 +81,8 @@ void transform_system::update(registry& reg, float dt) {
         // 1. check for collision
         auto& currentObjectCollisionBox       = reg.collision_boxes.at(e).box;
         reg.collision_boxes.at(e).isColliding = false;
+        reg.collision_boxes.at(e).color =
+            collision_component::NOT_COLLIDING_COLOR;
         for (auto& [entityID, collider] : reg.collision_boxes) {
           // ignore self collision
           if (entityID == e) {
@@ -69,6 +94,8 @@ void transform_system::update(registry& reg, float dt) {
 
           if (doesCollideAABBvAABB(boxAfterMovement, collider.box)) {
             reg.collision_boxes.at(e).isColliding = true;
+            reg.collision_boxes.at(e).color =
+                collision_component::COLLIDING_COLOR;
             auto collisionDirection =
                 getCollisionDirection(boxAfterMovement, collider.box);
             auto objVelocity = reg.transforms[e].vel;
@@ -82,6 +109,10 @@ void transform_system::update(registry& reg, float dt) {
         // 3. move collision box according to movement
         auto collisionBoxDisplacement = reg.transforms[e].vel * dt;
         currentObjectCollisionBox.move(collisionBoxDisplacement);
+      }
+      // move hitbox
+      if (reg.hitboxes.contains(e)) {
+        reg.hitboxes[e].box.move(reg.transforms[e].vel * dt);
       }
       reg.transforms[e].pos += reg.transforms[e].vel * dt;
       reg.transforms[e].rotationInDegrees += reg.transforms[e].rotationvel * dt;

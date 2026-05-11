@@ -149,11 +149,12 @@ int main() {
     Model sphere;
     Model ak;
     Model arm;
+    Model capsule;
     fs::path modelDir = "models";
 
     // assett loading multithreaded:
     // https://www.reddit.com/r/opengl/comments/17httnd/help_with_loading_assets_with_multithreading/
-    auto modelsLambda = [&]() {
+    auto loadModelsLambda = [&]() {
       std::println("Loading models");
       auto modelLoadStartTime = glfwGetTime();
 
@@ -170,6 +171,9 @@ int main() {
       std::println("Loading viewmodel");
       modelsLoaded &=
           ak.LoadMesh(projectPath / modelDir / fs::path("ak47.gltf"));
+      std::println("Loading capsule");
+      modelsLoaded &= capsule.LoadMesh(projectPath / modelDir /
+                                       fs::path("capsule_smooth.obj"));
       if (modelsLoaded == false) {
         std::println("Models failed to load!");
         // return -1;
@@ -181,7 +185,7 @@ int main() {
       return true;
     };
 
-    modelsLambda();
+    loadModelsLambda();
 
     std::println("Loading textures");
     auto texturesLoadStartTime = glfwGetTime();
@@ -205,8 +209,9 @@ int main() {
 
     // compile shaders
     Shader shader;
-    Shader line_shader;
-    Shader shadow_shader;
+    Shader lineShader;
+    Shader boxShader;
+    Shader shadowShader;
     Shader debugDepthQuad;
     Shader skyboxShader;
     Shader viewmodelShader;
@@ -214,60 +219,46 @@ int main() {
     // TODO: collect directories in one place
     std::string shaderDir = "shaders";
     std::println("Loading shaders");
+    using ShaderInfo         = std::pair<std::string_view, Shader&>;
+    const std::array shaders = {ShaderInfo{"main", shader},
+                                ShaderInfo{"line", lineShader},
+                                ShaderInfo{"box", boxShader},
+                                ShaderInfo{"shadowShader", shadowShader},
+                                ShaderInfo{"debugQuad", debugDepthQuad},
+                                ShaderInfo{"skybox", skyboxShader},
+                                ShaderInfo{"viewmodel", viewmodelShader},
+                                ShaderInfo{"muzzle", muzzleFlashShader}};
     auto shaderLoadStartTime = glfwGetTime();
-    if (loadshader(projectPath, shaderDir, "main", shader))
-      return -1;
-    if (loadshader(projectPath, shaderDir, "line", line_shader))
-      return -2;
-    if (loadshader(projectPath, shaderDir, "depthShader", shadow_shader))
-      return -3;
-    if (loadshader(projectPath, shaderDir, "debugQuad", debugDepthQuad))
-      return -4;
-    if (loadshader(projectPath, shaderDir, "skybox", skyboxShader))
-      return -5;
-    if (loadshader(projectPath, shaderDir, "viewmodel", viewmodelShader))
-      return -6;
-    if (loadshader(projectPath, shaderDir, "muzzle", muzzleFlashShader))
-      return -7;
+
+    // Loading shaders
+    // Scope to not pollute namespace with count variable
+    // TODO: add custom lambda function for shaders to handle hot-reloading
+    // NOTE: e.g. for main shader the following needs to be set:
+    // shader.set1i(0, "diffuseTexture");
+    // shader.set1i(1, "shadowMap");
+    //
+    {
+      int count = 0;
+      for (auto& shaderItr : shaders) {
+        ++count;
+        if (loadshader(projectPath, shaderDir, shaderItr.first,
+                       shaderItr.second))
+          return -count;
+      }
+    }
     std::println("Loaded shaders in {} ms.",
                  (glfwGetTime() - shaderLoadStartTime) * 1000.f);
 
     // shader file observers
     std::vector<std::unique_ptr<FileObserver>> observers;
-    observers.emplace_back(fileObserverFactory());
-    observers.back()->add_watch(projectPath / shaderDir / "main.vert");
-    observers.back()->add_watch(projectPath / shaderDir / "main.frag");
-    observers.back()->subscribe(&shader);
-
-    observers.emplace_back(fileObserverFactory());
-    observers.back()->add_watch(projectPath / shaderDir / "line.vert");
-    observers.back()->add_watch(projectPath / shaderDir / "line.frag");
-    observers.back()->subscribe(&line_shader);
-
-    observers.emplace_back(fileObserverFactory());
-    observers.back()->add_watch(projectPath / shaderDir / "depthShader.vert");
-    observers.back()->add_watch(projectPath / shaderDir / "depthShader.frag");
-    observers.back()->subscribe(&shadow_shader);
-
-    observers.emplace_back(fileObserverFactory());
-    observers.back()->add_watch(projectPath / shaderDir / "debugQuad.vert");
-    observers.back()->add_watch(projectPath / shaderDir / "debugQuad.frag");
-    observers.back()->subscribe(&debugDepthQuad);
-
-    observers.emplace_back(fileObserverFactory());
-    observers.back()->add_watch(projectPath / shaderDir / "skybox.vert");
-    observers.back()->add_watch(projectPath / shaderDir / "skybox.frag");
-    observers.back()->subscribe(&skyboxShader);
-
-    observers.emplace_back(fileObserverFactory());
-    observers.back()->add_watch(projectPath / shaderDir / "viewmodel.vert");
-    observers.back()->add_watch(projectPath / shaderDir / "viewmodel.frag");
-    observers.back()->subscribe(&viewmodelShader);
-
-    observers.emplace_back(fileObserverFactory());
-    observers.back()->add_watch(projectPath / shaderDir / "muzzle.vert");
-    observers.back()->add_watch(projectPath / shaderDir / "muzzle.frag");
-    observers.back()->subscribe(&muzzleFlashShader);
+    for (auto& shaderItr : shaders) {
+      auto vertFile = std::string{shaderItr.first} + std::string{".vert"};
+      auto fragFile = std::string{shaderItr.first} + std::string{".frag"};
+      observers.emplace_back(fileObserverFactory());
+      observers.back()->add_watch(projectPath / shaderDir / vertFile);
+      observers.back()->add_watch(projectPath / shaderDir / fragFile);
+      observers.back()->subscribe(&shader);
+    }
     // shader file observers
 
     glm::mat4 projection(1.f);
@@ -278,6 +269,7 @@ int main() {
                          0.1f, 100.0f);
 
     //------------------TEXT------------------
+    // TODO: add shader from the outside to allow hot-reloading
     TextRenderer textrenderer(SCR_WIDTH, SCR_HEIGHT);
 
     auto textVertexShaderFile   = fs::path("text.vert");
@@ -310,6 +302,7 @@ int main() {
 
     model_system ms;
     transform_system ts;
+    hitbox_system hs;
 
     registry componentRegistry;
 
@@ -323,8 +316,9 @@ int main() {
         // and enables error handling
         throw std::runtime_error("Entity cap reached");
       }
-      std::println("Adding entity at: {} {} {}", tc.pos.x, tc.pos.y, tc.pos.z);
       auto entityID = create_entity();
+      std::println("[{}] Adding entity at: {} {} {}", entityID, tc.pos.x,
+                   tc.pos.y, tc.pos.z);
       componentRegistry.models.emplace(
           entityID, model_component{model, mat, texture, defaultRotation});
       componentRegistry.transforms[entityID] = tc;
@@ -427,6 +421,25 @@ int main() {
                                   .rotationInDegrees = 0.f,
                                   .rotationvel       = 0.f});
 
+    auto enemyID =
+        addEntity(capsule, dullMaterial, whiteTexture,
+                  transform_component{.pos   = {0.0f, 0.0f, 3.0f},
+                                      .vel   = glm::vec3{0.f},
+                                      .acc   = glm::vec3{0.f, -1.f, 0.f},
+                                      .rot   = {1.0f, 0.0f, 0.0f},
+                                      .scale = glm::vec3{1.0f, 0.9f, 1.0f},
+                                      .rotationInDegrees = 0.f,
+                                      .rotationvel       = 0.f});
+    componentRegistry.collision_boxes[enemyID] =
+        collision_component{.box       = {glm::vec3{-0.5f, 0.0f, 3.f - 0.5f},
+                                          glm::vec3{0.5f, 1.5f, 3.f + 0.5f}},
+                            .isMovable = true};
+
+    componentRegistry.hitboxes[enemyID] =
+        hitbox_component{.box        = {glm::vec3{-0.3f, 0.0f, 3.f - 0.3f},
+                                        glm::vec3{0.3f, 1.5f, 3.f + 0.3f}},
+                         .isTargeted = false};
+
     // TODO: set the numbers based on a common header file
     shader.set1i(0, "diffuseTexture");
     shader.set1i(1, "shadowMap");
@@ -482,6 +495,12 @@ int main() {
       // ----System update functions----
       ts.update(componentRegistry, deltaTime);
       ms.update(componentRegistry);
+      Line shootRay;
+      shootRay.updateWithDirection(player.getCamera().getCameraPosition(),
+                                   player.getCamera().getCameraFront(),
+                                   glm::vec3{1.f});
+      hs.update(componentRegistry, shootRay);
+
       // ----System update functions----
 
       /* camera.keyControl(window.getKeys(), deltaTime); */
@@ -541,7 +560,7 @@ int main() {
       //                                          glm::vec3(0.f, 1.f, 0.f));
       glm::mat4 lightSpaceMatrix = lightProjection * lightView;
 
-      shadowmap.render(ms, componentRegistry, shadow_shader, shader,
+      shadowmap.render(ms, componentRegistry, shadowShader, shader,
                        lightSpaceMatrix);
 
       // debug quad
@@ -551,16 +570,6 @@ int main() {
       //  glActiveTexture(GL_TEXTURE0);
       //  glBindTexture(GL_TEXTURE_2D, depthMap);
       // debug quad
-
-      static Line line;
-      line.updateWithDirection(spotLights[0].getPos(),
-                               spotLights[0].getDirection(), {1.f, 0.f, 0.f});
-      line_shader.setMat4fv(view, "view");
-      line_shader.setMat4fv(projection, "projection");
-      line_shader.use();
-      line.render();
-
-      renderCollisionBoxes(componentRegistry);
 
       // ----Lighting pass-----
 
@@ -593,6 +602,20 @@ int main() {
       skyboxShader.setMat4fv(projection, "projection");
       skybox.render();
       //----Skybox----
+
+      static Line line;
+      line.updateWithDirection(spotLights[0].getPos(),
+                               spotLights[0].getDirection(), {1.f, 0.f, 0.f});
+      lineShader.setMat4fv(view, "view");
+      lineShader.setMat4fv(projection, "projection");
+      lineShader.use();
+      line.render();
+
+      boxShader.setMat4fv(view, "view");
+      boxShader.setMat4fv(projection, "projection");
+      boxShader.use();
+      // renderBoxes(componentRegistry.collision_boxes);
+      // renderBoxes(componentRegistry.hitboxes);
 
       //--Render muzzleflash--
       if (ak.GetActiveAnimationName() == "shoot") {
@@ -657,13 +680,13 @@ int main() {
         if (now - lastTimeTextWasRendered > 1 / textTickRate) {
           lastTimeTextWasRendered = now;
           timeStr                 = "Elapsed time: " +
-                    std::to_string(static_cast<unsigned int>(
-                        std::floor(deltaTime * 1000.f))) +
-                    " ms";
-          FPSStr       = "FPS: " + std::to_string(static_cast<unsigned int>(
-                                 std::floor(1.f / deltaTime)));
-          cameraLocStr = std::string("CAM location: ") +
-                         glm::to_string(camera.getCameraPosition());
+                                    std::to_string(static_cast<unsigned int>(
+                                        std::floor(deltaTime * 1000.f))) +
+                                    " ms";
+          FPSStr          = "FPS: " + std::to_string(static_cast<unsigned int>(
+                                          std::floor(1.f / deltaTime)));
+          cameraLocStr    = std::string("CAM location: ") +
+                            glm::to_string(camera.getCameraPosition());
           cameraFacingStr = std::string("CAM facing: ") +
                             glm::to_string(camera.getCameraFront());
           entityCountStr =

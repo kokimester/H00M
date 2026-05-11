@@ -33,9 +33,9 @@
 class Model {
 public:
   enum class ANIMATION_STATE : uint8_t {
-    //for models without any animations
+    // for models without any animations
     NO_ANIMATION,
-    //for models with animations currently not animating
+    // for models with animations currently not animating
     IDLE,
     IN_ANIMATION
   };
@@ -71,7 +71,7 @@ private:
 
   struct VertexBoneData {
     uint32_t BoneIDs[MAX_NUM_BONES_PER_VERTEX] = {0};
-    float Weights[MAX_NUM_BONES_PER_VERTEX] = {0.0f};
+    float Weights[MAX_NUM_BONES_PER_VERTEX]    = {0.0f};
 
     VertexBoneData() {}
 
@@ -109,21 +109,21 @@ private:
 
   enum BUFFER_TYPE {
     INDEX_BUFFER = 0,
-    POS_VB = 1,
-    TEXCOORD_VB = 2,
-    NORMAL_VB = 3,
-    BONE_VB = 4,
-    NUM_BUFFERS = 5
+    POS_VB       = 1,
+    TEXCOORD_VB  = 2,
+    NORMAL_VB    = 3,
+    BONE_VB      = 4,
+    NUM_BUFFERS  = 5
   };
 
-  GLuint m_VAO = 0;
+  GLuint m_VAO                  = 0;
   GLuint m_Buffers[NUM_BUFFERS] = {0};
 
   struct BasicMeshEntry {
     BasicMeshEntry() {
-      NumIndices = 0;
-      BaseVertex = 0;
-      BaseIndex = 0;
+      NumIndices    = 0;
+      BaseVertex    = 0;
+      BaseIndex     = 0;
       MaterialIndex = INVALID_MATERIAL;
     }
 
@@ -154,10 +154,11 @@ private:
   size_t m_ActiveAnimation = 0;
   std::map<std::string, size_t> m_AnimationNameToIndexMap;
   float m_AnimationTime = 0.f;
-  //TODO: figure out a better way to store this 
-  //(maybe a struct for all animations with all relevant information stored insed)
+  // TODO: figure out a better way to store this
+  //(maybe a struct for all animations with all relevant information stored
+  //insed)
   float m_TicksPerSecond = 0.f;
-  
+
   ANIMATION_STATE m_AnimationState = ANIMATION_STATE::NO_ANIMATION;
 
   struct BoneInfo {
@@ -165,7 +166,7 @@ private:
     glm::mat4 FinalTransformation;
 
     BoneInfo(const glm::mat4& Offset) {
-      OffsetMatrix = glm::transpose(Offset);
+      OffsetMatrix        = glm::transpose(Offset);
       FinalTransformation = glm::mat4{0.f};
     }
   };

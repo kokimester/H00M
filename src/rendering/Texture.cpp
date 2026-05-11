@@ -4,7 +4,7 @@
 Texture::Texture()
     : textureID(0), height(0), width(0), bitDepth(0), fileLocation(nullptr) {}
 
-Texture::Texture(const char *fileLoc)
+Texture::Texture(const char* fileLoc)
     : textureID(0), height(0), width(0), bitDepth(0), fileLocation(nullptr) {
   int length = strlen(fileLoc) + 1;
   if (length == 1) {
@@ -21,7 +21,7 @@ Texture::Texture(const char *fileLoc)
 Texture::~Texture() { clearTexture(); }
 
 bool Texture::loadTextureAlpha() {
-  unsigned char *texData =
+  unsigned char* texData =
       stbi_load(fileLocation, &width, &height, &bitDepth, 0);
   if (!texData) {
     printf("Failed to find texture at location: %s\n", fileLocation);
@@ -51,7 +51,7 @@ bool Texture::loadTextureAlpha() {
 }
 
 bool Texture::loadTexture() {
-  unsigned char *texData =
+  unsigned char* texData =
       stbi_load(fileLocation, &width, &height, &bitDepth, 0);
   if (!texData) {
     printf("Failed to find texture at location: %s\n", fileLocation);
@@ -96,8 +96,8 @@ void Texture::useTexture() {
 void Texture::clearTexture() {
   glDeleteTextures(1, &textureID);
   textureID = 0;
-  width = 0;
-  height = 0;
-  bitDepth = 0;
+  width     = 0;
+  height    = 0;
+  bitDepth  = 0;
   delete fileLocation;
 }

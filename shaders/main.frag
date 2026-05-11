@@ -169,12 +169,12 @@ float ShadowCalculation(vec4 fragPosLightSpace)
     // transform to [0,1] range
     projCoords = projCoords * 0.5 + 0.5;
     // get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
-    float closestDepth = texture(shadowMap, projCoords.xy).r; 
+    float closestDepth = texture(shadowMap, projCoords.xy).r;
     // get depth of current fragment from light's perspective
     float currentDepth = projCoords.z;
     // check whether current frag pos is in shadow
-	float bias = max(0.05 * (1.0 - dot(Normal, spotLights[0].direction)), 0.005); 
-	float shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;  
+	float bias = max(0.05 * (1.0 - dot(Normal, spotLights[0].direction)), 0.005);
+	float shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;
 
     return shadow;
 }
@@ -187,12 +187,13 @@ void main()
     //finalColor += vec4(0.1, 0.1, 0.1, 0.0);
 	vec3 textureColor = texture(diffuseTexture, fs_in.TexCoords).rgb;
 	//SHADOW
-	float shadow = ShadowCalculation(fs_in.FragPosLightSpace);                      
-    vec3 lighting = (1.0 - shadow) * textureColor;    
+	float shadow = ShadowCalculation(fs_in.FragPosLightSpace);
+    vec3 lighting = (1.0 - shadow) * textureColor;
     //lighting = vec3(shadow);
     color = vec4(lighting, 1.0) * finalColor;
+    //color = vec4(1.0) - color;
 
     //uncomment to check normals
-    //color = vec4(normalize(Normal) * 0.5 + 0.5, 1.0);
+    // color = vec4(normalize(Normal) * 0.5 + 0.5, 1.0);
 
 }

@@ -10,16 +10,22 @@ Line::Line() : VAO{0}, VBO{0} {
                lineData.data(), GL_DYNAMIC_DRAW);
 
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
 
   glEnableVertexAttribArray(1);
   glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
-                        (void *)(3 * sizeof(float)));
+                        (void*)(3 * sizeof(float)));
 }
 
-void Line::updateWithPosition(const glm::vec3 &p1, const glm::vec3 &p2,
-                              const glm::vec3 &color) {
+const glm::vec3& Line::getStart() const { return start; }
+const glm::vec3& Line::getEnd() const { return end; }
+float Line::getLength() const { return LENGTH; }
+
+void Line::updateWithPosition(const glm::vec3& p1, const glm::vec3& p2,
+                              const glm::vec3& color) {
   unsigned int idx = 0;
+  start            = p1;
+  end              = p2;
   // point 1
   lineData[idx++] = (p1.x);
   lineData[idx++] = (p1.y);
@@ -40,9 +46,9 @@ void Line::updateWithPosition(const glm::vec3 &p1, const glm::vec3 &p2,
   lineData[idx++] = (color.g);
   lineData[idx++] = (color.b);
 }
-void Line::updateWithDirection(const glm::vec3 &from,
-                               const glm::vec3 &direction,
-                               const glm::vec3 &color) {
+void Line::updateWithDirection(const glm::vec3& from,
+                               const glm::vec3& direction,
+                               const glm::vec3& color) {
   glm::vec3 end = from + Line::LENGTH * direction;
   updateWithPosition(from, end, color);
 }
