@@ -21,7 +21,15 @@ void Model::InitMaterials() {
         std::println("Texture path: {}", path.data);
         std::string fileName = std::string(path.data).substr(idx + 1);
 
-        std::string texPath = std::string("../textures/") + fileName;
+        //TODO: remove this obnoxious hack and move it to something global
+        namespace fs = std::filesystem;
+        auto projectPath = fs::current_path();
+        if (!isValidProjectPath(projectPath)) {
+          std::println(stderr, "Error occured while validating project path!");
+          m_TextureList[i].reset();
+        }
+        auto textureDir("textures");
+        std::string texPath = fs::path(projectPath / textureDir / fileName).string();
 
         m_TextureList[i] = std::make_unique<Texture>(texPath.c_str());
         if (!m_TextureList[i]->loadTexture()) {

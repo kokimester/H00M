@@ -1,4 +1,4 @@
-#ifdef WIN32
+#ifdef _WIN32
 #include "FileObserverWindows.h"
 #include <algorithm>
 #include <print>

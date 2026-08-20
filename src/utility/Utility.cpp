@@ -128,6 +128,7 @@ int validateShaderFiles(const std::filesystem::path& projectPath,
   }
   std::string vertexFileName   = vertexPath.string();
   std::string fragmentFileName = fragmentPath.string();
+    std::println("Compiling shaders: {} {}",vertexFileName, fragmentFileName);
   if (shader.compile_and_link(vertexFileName.c_str(),
                               fragmentFileName.c_str())) {
     std::cout << "Shader compilation or linking error!\n";

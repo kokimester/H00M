@@ -150,7 +150,7 @@ int main() {
     Model ak;
     Model arm;
     Model capsule;
-    fs::path modelDir = "models";
+    fs::path modelDir("models");
 
     // assett loading multithreaded:
     // https://www.reddit.com/r/opengl/comments/17httnd/help_with_loading_assets_with_multithreading/
@@ -188,17 +188,18 @@ int main() {
     loadModelsLambda();
 
     std::println("Loading textures");
+    fs::path textureDir("textures");
     auto texturesLoadStartTime = glfwGetTime();
     // load textures
-    Texture brickTexture("../textures/brick.png");
+    Texture brickTexture(fs::path(projectPath / textureDir / fs::path("brick.png")).string().c_str());
     brickTexture.loadTexture();
-    Texture dirtTexture("../textures/dirt.png");
+    Texture dirtTexture(fs::path(projectPath / textureDir / fs::path("dirt.png")).string().c_str());
     dirtTexture.loadTexture();
-    Texture plainTexture("../textures/floor.png");
+    Texture plainTexture(fs::path(projectPath / textureDir / fs::path("floor.png")).string().c_str());
     plainTexture.loadTexture();
-    Texture whiteTexture("../textures/white.png");
+    Texture whiteTexture(fs::path(projectPath / textureDir / fs::path("white.png")).string().c_str());
     whiteTexture.loadTexture();
-    Texture muzzleFlashTexture("../textures/muzzleflash.png");
+    Texture muzzleFlashTexture(fs::path(projectPath / textureDir / fs::path("muzzleflash.png")).string().c_str());
     muzzleFlashTexture.loadTexture();
     std::println("Loaded textures in {} ms.",
                  (glfwGetTime() - texturesLoadStartTime) * 1000.f);
@@ -364,9 +365,10 @@ int main() {
     };
 
     auto playerPos = componentRegistry.transforms[playerEntityID].pos;
+    auto playerCollisionBoxSide = 0.3f;
     componentRegistry.collision_boxes[playerEntityID] =
-        collision_component{.box = {playerPos + glm::vec3{-0.5f, 0.f, -0.5f},
-                                    playerPos + glm::vec3{0.5f, 1.0f, 0.5f}},
+        collision_component{.box = {playerPos + glm::vec3{-playerCollisionBoxSide, 0.f, -playerCollisionBoxSide},
+                                    playerPos + glm::vec3{playerCollisionBoxSide, 1.0f, playerCollisionBoxSide}},
                             .isMovable = true};
 
     auto player = Player(playerEntityID, playerRegistryRef, playerCamera);
@@ -459,7 +461,6 @@ int main() {
     shadowmap.setup();
 
     // setup cubemap for skybox
-    fs::path textureDir("textures");
     fs::path skyboxDir("skybox");
     fs::path skyBoxPath = projectPath / textureDir / skyboxDir;
     std::array<std::string_view, 6> cubemapFaces = {"right.jpg", "left.jpg",
