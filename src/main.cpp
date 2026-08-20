@@ -216,6 +216,7 @@ int main() {
     Shader skyboxShader;
     Shader viewmodelShader;
     Shader muzzleFlashShader;
+    Shader crosshairShader;
     // TODO: collect directories in one place
     std::string shaderDir = "shaders";
     std::println("Loading shaders");
@@ -227,7 +228,8 @@ int main() {
                                 ShaderInfo{"debugQuad", debugDepthQuad},
                                 ShaderInfo{"skybox", skyboxShader},
                                 ShaderInfo{"viewmodel", viewmodelShader},
-                                ShaderInfo{"muzzle", muzzleFlashShader}};
+                                ShaderInfo{"muzzle", muzzleFlashShader},
+                                ShaderInfo{"crosshair", crosshairShader}};
     auto shaderLoadStartTime = glfwGetTime();
 
     // Loading shaders
@@ -615,7 +617,7 @@ int main() {
       boxShader.setMat4fv(projection, "projection");
       boxShader.use();
       // renderBoxes(componentRegistry.collision_boxes);
-      // renderBoxes(componentRegistry.hitboxes);
+      hs.render(componentRegistry);
 
       //--Render muzzleflash--
       if (ak.GetActiveAnimationName() == "shoot") {
@@ -673,6 +675,12 @@ int main() {
       viewmodelShader.use();
       ak.Render();
       //----Viewmodel rendering-----
+
+      //----Crosshair rendering-----
+      crosshairShader.use();
+
+      crosshairShader.unuse();
+      //----Crosshair rendering-----
 
       // TODO: create debug output handler class
       //  handle performance debug output

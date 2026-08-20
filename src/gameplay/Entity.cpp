@@ -70,6 +70,120 @@ void hitbox_system::update(registry& reg, const Line& hit_line) {
   }
 }
 
+void hitbox_system::render(registry& reg) {
+  auto componentRegistryBoxes = reg.hitboxes;
+  static unsigned int VAO = 0, VBO = 0, EBO = 0;
+
+  // 12 triangles * 3 indices = 36
+  static constexpr unsigned int indices[] = {
+      // top    (max.y)
+      0,
+      1,
+      3,
+      3,
+      2,
+      0,
+      // bottom (min.y)
+      4,
+      6,
+      7,
+      7,
+      5,
+      4,
+      // front  (max.z)
+      0,
+      4,
+      5,
+      5,
+      1,
+      0,
+      // back   (min.z)
+      2,
+      3,
+      7,
+      7,
+      6,
+      2,
+      // right  (+X, max.x)
+      0,
+      2,
+      6,
+      6,
+      4,
+      0,
+      // left   (-X, min.x)
+      1,
+      5,
+      7,
+      7,
+      3,
+      1,
+  };
+
+  if (VAO == 0) {
+    glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO);
+
+    glGenBuffers(1, &VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    // 8 vertices * (vec3 pos + vec3 color) = 8 * 6 floats, dynamic since box
+    // changes
+    glBufferData(GL_ARRAY_BUFFER, 8 * 6 * sizeof(float), nullptr,
+                 GL_DYNAMIC_DRAW);
+
+    glGenBuffers(1, &EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
+                 GL_STATIC_DRAW);
+
+    // position
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
+                          (void*)0);
+    // color
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
+                          (void*)(3 * sizeof(float)));
+
+    glBindVertexArray(0);
+  }
+
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glDisable(GL_CULL_FACE);
+  glDepthMask(GL_FALSE);
+  glBindVertexArray(VAO);
+
+  for (const auto& [entityID, boxComponent] : componentRegistryBoxes) {
+    const auto& max    = boxComponent.box.max;
+    const auto& min    = boxComponent.box.min;
+    glm::vec3 boxColor = {1.f, 0.f, 0.f};
+    boxColor           = boxComponent.color;
+
+    // interleaved: pos(xyz) color(xyz) per vertex, 8 vertices
+    float vertexData[] = {
+        max.x, max.y, max.z, boxColor.r, boxColor.g, boxColor.b, // 0 top
+        min.x, max.y, max.z, boxColor.r, boxColor.g, boxColor.b, // 1
+        max.x, max.y, min.z, boxColor.r, boxColor.g, boxColor.b, // 2
+        min.x, max.y, min.z, boxColor.r, boxColor.g, boxColor.b, // 3
+        max.x, min.y, max.z, boxColor.r, boxColor.g, boxColor.b, // 4 bottom
+        min.x, min.y, max.z, boxColor.r, boxColor.g, boxColor.b, // 5
+        max.x, min.y, min.z, boxColor.r, boxColor.g, boxColor.b, // 6
+        min.x, min.y, min.z, boxColor.r, boxColor.g, boxColor.b, // 7
+    };
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertexData), vertexData);
+
+    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+  }
+
+  glDepthMask(GL_TRUE);
+  glDisable(GL_BLEND);
+  glEnable(GL_CULL_FACE);
+  glBindVertexArray(0);
+}
+
 void transform_system::update(registry& reg, float dt) {
   for (std::size_t e = 1; e <= MAX_ENTITY; ++e) {
     if (reg.transforms.contains(e)) {

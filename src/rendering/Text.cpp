@@ -3,9 +3,9 @@
 TextRenderer::TextRenderer(GLuint screenWidth, GLuint screenHeight)
     : width{screenWidth}, height{screenHeight} {}
 
-int TextRenderer::init(const fs::path &vertexShaderPath,
-                       const fs::path &fragmentShaderPath,
-                       const fs::path &fontPath) {
+int TextRenderer::init(const fs::path& vertexShaderPath,
+                       const fs::path& fragmentShaderPath,
+                       const fs::path& fontPath) {
   if (shader.compile_and_link(vertexShaderPath.string().c_str(),
                               fragmentShaderPath.string().c_str())) {
     std::cout << "Text shader compilation or linking error!\n";
@@ -87,7 +87,7 @@ int TextRenderer::init(const fs::path &vertexShaderPath,
 
 void TextRenderer::updateScreenParameters(GLuint screenWidth,
                                           GLuint screenHeight) {
-  width = screenWidth;
+  width  = screenWidth;
   height = screenHeight;
 }
 

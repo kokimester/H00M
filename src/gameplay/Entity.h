@@ -90,4 +90,5 @@ struct transform_system {
 
 struct hitbox_system {
   void update(registry& reg, const Line& hit_line);
+  void render(registry& reg);
 };
