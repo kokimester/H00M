@@ -201,6 +201,8 @@ int main() {
     whiteTexture.loadTexture();
     Texture muzzleFlashTexture(fs::path(projectPath / textureDir / fs::path("muzzleflash.png")).string().c_str());
     muzzleFlashTexture.loadTexture();
+    Texture crosshairTexture(fs::path(projectPath / textureDir / fs::path("crosshair.png")).string().c_str());
+    crosshairTexture.loadTexture();
     std::println("Loaded textures in {} ms.",
                  (glfwGetTime() - texturesLoadStartTime) * 1000.f);
 
@@ -451,6 +453,7 @@ int main() {
     viewmodelShader.set1i(0, "diffuseTexture");
 
     muzzleFlashShader.set1i(0, "diffuseTexture");
+    crosshairShader.set1i(0,"diffuseTexture");
 
     debugDepthQuad.set1i(0, "depthMap");
     skyboxShader.set1i(0, "skybox");
@@ -678,9 +681,35 @@ int main() {
       //----Viewmodel rendering-----
 
       //----Crosshair rendering-----
-      crosshairShader.use();
+      
+      //crosshairShader.use();
+      if (false) {
+      glClear(GL_DEPTH_BUFFER_BIT);
+      auto muzzleTranslation = glm::mat4{1.f};
+      muzzleTranslation =
+          glm::translate(muzzleTranslation, glm::vec3{0.3f, -0.25f, -2.2f});
+      muzzleTranslation = glm::rotate(muzzleTranslation, glm::radians(90.f),
+                                      glm::vec3{1.f, 0.f, 0.f});
+      muzzleTranslation = glm::scale(muzzleTranslation, glm::vec3{0.3f});
+      muzzleFlashShader.setMat4fv(projection, "projection");
+      muzzleFlashShader.setMat4fv(view, "view");
+      muzzleFlashShader.setMat4fv(muzzleTranslation, "model");
+      muzzleFlashShader.set1f(ak.GetAnimationProgress(), "progress");
 
-      crosshairShader.unuse();
+      //crosshairShader.use();
+      muzzleFlashShader.use();
+      glEnable(GL_BLEND);
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+      crosshairTexture.useTexture();
+      //crosshairShader.use();
+      
+      muzzleFlashShader.use();
+      muzzleFlashMesh.renderMesh();
+
+      glDisable(GL_BLEND);
+      //crosshairShader.unuse();
+      muzzleFlashShader.unuse();
+      }
       //----Crosshair rendering-----
 
       // TODO: create debug output handler class
